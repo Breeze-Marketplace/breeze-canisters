@@ -15,7 +15,7 @@ You need Node 22, [icp-cli](https://cli.internetcomputer.org) 1.7+ and mops 3.4.
 ```bash
 npm install -g @icp-sdk/icp-cli @icp-sdk/ic-wasm ic-mops@3.4.2
 mops install
-icp build backend shop vault
+icp build
 mops test
 ```
 

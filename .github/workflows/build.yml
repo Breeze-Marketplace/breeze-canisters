@@ -25,7 +25,7 @@ jobs:
         run: mops install
 
       - name: Build
-        run: icp build backend shop vault
+        run: icp build
 
       - name: Test
         run: mops test
@@ -33,6 +33,6 @@ jobs:
       # Published so anyone can compare them with the module hashes of deployed canisters.
       - name: Module hashes
         run: |
-          for name in backend shop vault; do
-            echo "$name $(shasum -a 256 ".icp/cache/artifacts/$name" | cut -d' ' -f1)"
+          for wasm in .icp/cache/artifacts/*; do
+            echo "$(basename "$wasm") $(shasum -a 256 "$wasm" | cut -d' ' -f1)"
           done | tee -a "$GITHUB_STEP_SUMMARY"
