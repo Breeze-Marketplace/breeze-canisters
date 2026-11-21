@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install toolchain
+        run: npm install -g @icp-sdk/icp-cli @icp-sdk/ic-wasm ic-mops@3.4.2
+
+      - name: Install packages
+        run: mops install
+
+      - name: Build
+        run: icp build backend shop vault
+
+      - name: Test
+        run: mops test
+
+      # Published so anyone can compare them with the module hashes of deployed canisters.
+      - name: Module hashes
+        run: |
+          for name in backend shop vault; do
+            echo "$name $(shasum -a 256 ".icp/cache/artifacts/$name" | cut -d' ' -f1)"
+          done | tee -a "$GITHUB_STEP_SUMMARY"

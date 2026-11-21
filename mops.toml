@@ -1,0 +1,56 @@
+[dependencies]
+base = "0.16.0"
+map = "9.0.1"
+core = "2.5.0"
+ic-certification = "1.1.0"
+StableHashMap = "https://github.com/canscale/StableHashMap#master@06d5ae9d8561ec0c3768dbfcced6ee90be923b70"
+sha2 = "0.1.0"
+assets = "0.2.2"
+hmac = "1.1.0"
+base64 = "1.0.1"
+sha3 = "0.1.1"
+certified-assets = "https://github.com/MykleNero/certified-assets#main@43aebd62a8a85888d6ad586e643860588f893338"
+http-types = "1.0.1"
+vector = "0.4.6"
+http-parser = "0.4.1"
+hex = "1.0.3"
+serde = "3.5.0"
+rep-indy-hash = "0.2.1"
+itertools = "0.2.2"
+base-x-encoder = "2.1.0"
+
+[toolchain]
+moc = "2.2.2"
+pocket-ic = "12.0.0"
+
+[dev-dependencies]
+test = "2.1.2"
+
+# Canisters built by `mops build` (icp.yaml's @dfinity/motoko recipe). Canisters that
+# import the ledgers or XRC resolve those `canister:` imports from candid/, where each
+# interface is named after the canister's fixed mainnet ID (also its ID locally).
+# Each canister's stable state comes from its enhanced-migration chain (`migrations`):
+# mops passes `--enhanced-migration <chain>` to moc.
+[canisters.backend]
+main = "src/backend/canisters/core/main.mo"
+args = ["--actor-idl", "candid", "--actor-alias", "icp_ledger", "ryjl3-tyaaa-aaaaa-aaaba-cai", "--actor-alias", "ckusdc_ledger", "xevnm-gaaaa-aaaar-qafnq-cai", "--actor-alias", "xrc", "uf6dk-hyaaa-aaaaq-qaaaq-cai"]
+
+[canisters.backend.migrations]
+chain = "src/backend/canisters/core/migrations"
+next = "src/backend/canisters/core/next-migration"
+
+[canisters.shop]
+main = "src/backend/canisters/shop/main.mo"
+args = ["--actor-idl", "candid", "--actor-alias", "icp_ledger", "ryjl3-tyaaa-aaaaa-aaaba-cai", "--actor-alias", "ckusdc_ledger", "xevnm-gaaaa-aaaar-qafnq-cai", "--actor-alias", "xrc", "uf6dk-hyaaa-aaaaq-qaaaq-cai"]
+
+[canisters.shop.migrations]
+chain = "src/backend/canisters/shop/migrations"
+next = "src/backend/canisters/shop/next-migration"
+
+[canisters.vault]
+main = "src/backend/canisters/vault/main.mo"
+
+[canisters.vault.migrations]
+chain = "src/backend/canisters/vault/migrations"
+next = "src/backend/canisters/vault/next-migration"
+

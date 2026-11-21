@@ -1,0 +1,171 @@
+type Valut = 
+ service {
+   /// Lets `other` write. Writers only; adding one twice has no effect.
+   authorize: (other: principal) -> ();
+   clear: (args: ClearArguments) -> ();
+   commit_batch: (args: CommitBatchArguments) -> ();
+   create_asset: (arg: CreateAssetArguments) -> ();
+   create_batch: (arg: record {}) -> (record {batch_id: BatchId;});
+   create_chunk: (arg: record {
+                         batch_id: BatchId;
+                         content: blob;
+                       }) -> (record {chunk_id: ChunkId;});
+   /// Creates `path` (e.g. `docs/contracts`) and the folders above it. Creating one that exists has
+   /// no effect.
+   create_folder: (path: text) -> ();
+   /// Takes write access away from `other`. Writers only. Refuses to remove the creator (core) or
+   /// the last writer.
+   deauthorize: (other: principal) -> ();
+   delete_asset: (args: DeleteAssetArguments) -> ();
+   /// Deletes `path` when it holds no folders and no files.
+   delete_folder: (path: text) -> ();
+   /// Private keys: writers only.
+   get: (arg: record {
+                accept_encodings: vec text;
+                key: Key;
+              }) ->
+    (record {
+       content: blob;
+       content_encoding: text;
+       content_type: text;
+       sha256: opt blob;
+       total_length: nat;
+     }) query;
+   /// Private keys: writers only.
+   get_chunk: (arg:
+    record {
+      content_encoding: text;
+      index: nat;
+      key: Key;
+      sha256: opt blob;
+    }) -> (record {content: blob;}) query;
+   http_request: (request: HttpRequest) -> (HttpResponse) query;
+   /// Public assets stream freely. A private asset's token carries its ticket (see
+   /// `Visibility.keyWithTicket`), checked again for every chunk.
+   http_request_streaming_callback: (token: StreamingCallbackToken) ->
+    (StreamingCallbackHttpResponse) query;
+   /// Serves a private asset and consumes its ticket. No `http_request` asks for an upgrade, so only
+   /// direct callers get here.
+   http_request_update: (request: HttpRequest) -> (HttpResponse);
+   /// Writers see every asset; anyone else sees public ones only.
+   list: (arg: record {}) -> (vec AssetDetails) query;
+   /// Who can write. Writers only. An update, like the stock asset canister's.
+   list_authorized: () -> (vec principal);
+   /// The folders created with `create_folder`. Files' keys imply more.
+   list_folders: () -> (vec text) query;
+   /// Files `from`'s content under `to` and removes `from`, refusing to replace an existing asset.
+   /// Moving between `/private/…` and `/public/…` changes who can read the file. Links to `from`
+   /// stop working.
+   move_asset: (arg: record {
+                       from: text;
+                       to: text;
+                     }) -> ();
+   /// Private keys: writers only.
+   retrieve: (path: Path) -> (Contents) query;
+   /// Stores the HMAC secret that signs delivery tickets. Only the linked shop; others are ignored.
+   setHmacSecretKey: (key: blob) -> ();
+   /// Sets the shop allowed to send the HMAC secret. Only the vault's creator (core); others are ignored.
+   setShopCanisterId: (id: principal) -> ();
+   set_asset_content: (arg: SetAssetContentArguments) -> ();
+   store: (arg:
+    record {
+      content: blob;
+      content_encoding: text;
+      content_type: text;
+      key: Key;
+      sha256: opt blob;
+    }) -> ();
+   unset_asset_content: (args: UnsetAssetContentArguments) -> ();
+ };
+type UnsetAssetContentArguments = 
+ record {
+   content_encoding: text;
+   key: Key;
+ };
+type Time = int;
+type StreamingStrategy = variant {
+                           Callback:
+                            record {
+                              callback:
+                               func (StreamingCallbackToken) ->
+                                (StreamingCallbackHttpResponse) query;
+                              token: StreamingCallbackToken;
+                            };};
+type StreamingCallbackToken = 
+ record {
+   content_encoding: text;
+   index: nat;
+   key: text;
+   sha256: opt blob;
+ };
+type StreamingCallbackHttpResponse = 
+ record {
+   body: blob;
+   token: opt StreamingCallbackToken;
+ };
+type SetAssetContentArguments = 
+ record {
+   chunk_ids: vec ChunkId;
+   content_encoding: text;
+   key: Key;
+   sha256: opt blob;
+ };
+type Path = text;
+type Key = text;
+type HttpResponse = 
+ record {
+   body: blob;
+   headers: vec HeaderField;
+   status_code: nat16;
+   streaming_strategy: opt StreamingStrategy;
+   upgrade: opt bool;
+ };
+type HttpRequest = 
+ record {
+   body: blob;
+   headers: vec HeaderField;
+   method: text;
+   url: text;
+ };
+type HeaderField = 
+ record {
+   text;
+   text;
+ };
+type DeleteAssetArguments = record {key: Key;};
+type CreateAssetArguments = 
+ record {
+   content_type: text;
+   key: Key;
+ };
+type Contents = blob;
+type CommitBatchArguments = 
+ record {
+   batch_id: BatchId;
+   operations: vec BatchOperationKind;
+ };
+type ClearArguments = record {};
+type ChunkId = nat;
+type BatchOperationKind = 
+ variant {
+   Clear: ClearArguments;
+   CreateAsset: CreateAssetArguments;
+   DeleteAsset: DeleteAssetArguments;
+   SetAssetContent: SetAssetContentArguments;
+   UnsetAssetContent: UnsetAssetContentArguments;
+ };
+type BatchId = nat;
+type AssetEncodingDetails = 
+ record {
+   content_encoding: text;
+   length: nat;
+   modified: Time;
+   sha256: opt blob;
+ };
+type AssetDetails = 
+ record {
+   content_type: text;
+   encodings: vec AssetEncodingDetails;
+   key: Key;
+ };
+service : () -> Valut

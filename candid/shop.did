@@ -1,0 +1,2137 @@
+type WithdrawalAddress = 
+ record {
+   addedAt: int;
+   name: text;
+   owner: principal;
+   subaccount: opt blob;
+ };
+type WithdrawError = 
+ variant {
+   Busy;
+   InsufficientFunds: record {
+                        balance: nat;
+                        fee: nat;
+                      };
+   InvalidAmount: text;
+   InvalidDestination: text;
+   TransferError: text;
+   Unauthorized: text;
+   UnsupportedToken: text;
+ };
+type VariantInput = 
+ record {
+   attributes: opt vec ProductAttribute;
+   imageUrls: vec text;
+   name: text;
+   price: PriceContext;
+   pricing: opt Pricing;
+   sku: SKU;
+   status: ProductStatus;
+ };
+type VariantId = nat32;
+type Value = 
+ variant {
+   "bool": bool;
+   "int": int;
+   "nat": nat;
+   "principal": principal;
+   "text": text;
+ };
+type ValidationError = 
+ variant {
+   ColumnsTooWide: record {
+                     id: nat;
+                     total: nat;
+                   };
+   DuplicateId: nat;
+   EmptyText: record {
+                field: text;
+                id: nat;
+              };
+   InvalidImage: record {
+                   id: nat;
+                   reason: text;
+                 };
+   InvalidLink: record {
+                  id: nat;
+                  reason: text;
+                };
+   LayoutTooLarge: record {
+                     bytes: nat;
+                     max: nat;
+                   };
+   OutOfRange: record {
+                 field: text;
+                 id: nat;
+                 max: nat;
+                 min: nat;
+               };
+   TextTooLong: record {
+                  field: text;
+                  id: nat;
+                  max: nat;
+                };
+   TooManyElements: record {max: nat;};
+   TooManyItems: record {
+                   field: text;
+                   id: nat;
+                   max: nat;
+                 };
+   TooManySections: record {max: nat;};
+ };
+type UpdateThemeError = 
+ variant {
+   ContrastTooLow: vec ContrastFailure;
+   Unauthorized: text;
+ };
+type UpdateProductInput = 
+ record {
+   category: opt text;
+   description: text;
+   id: ProductId;
+   productType: ProductType;
+   tags: opt vec text;
+   title: text;
+   variants: vec VariantInput;
+ };
+type UpdateInventoryRequest = 
+ record {
+   lowStockThreshold: opt nat32;
+   reservedDelta: int32;
+   stockDelta: int32;
+   variantId: VariantId;
+ };
+type TransformArgs = 
+ record {
+   context: blob;
+   response: HttpRequestResult;
+ };
+type TranferFundsToMainError = 
+ variant {
+   InsufficientFunds: record {
+                        balance: nat;
+                        fee: nat;
+                        token: text;
+                      };
+   InvalidStatus: text;
+   NotFoundError: text;
+   TransferError: record {
+                    msg: text;
+                    token: text;
+                  };
+   Unauthorized: text;
+ };
+type TrackInput = 
+ record {
+   artists: vec text;
+   credits: vec Credit;
+   durationMs: nat32;
+   explicit: bool;
+   files: vec AudioFile;
+   isrc: opt text;
+   lyrics: opt text;
+   previewKey: opt text;
+   title: text;
+ };
+type TrackId = nat32;
+type TrackCount = 
+ variant {
+   all;
+   first: nat;
+   none;
+ };
+type Track = 
+ record {
+   artists: vec text;
+   credits: vec Credit;
+   durationMs: nat32;
+   explicit: bool;
+   files: vec AudioFile;
+   id: TrackId;
+   isrc: opt text;
+   lyrics: opt text;
+   previewKey: opt text;
+   status: MusicStatus;
+   title: text;
+ };
+type Totals = 
+ record {
+   discounts: Money;
+   shipping: Money;
+   subtotal: Money;
+   tax: Money;
+   total: Money;
+ };
+type TopProduct = 
+ record {
+   productId: nat32;
+   title: text;
+   unitsSold: nat32;
+ };
+type Token = text;
+type Time = int;
+type ThemeColor = 
+ record {
+   blue: nat8;
+   green: nat8;
+   red: nat8;
+ };
+type TextTone = 
+ variant {
+   dark;
+   light;
+ };
+type TextSpan = 
+ record {
+   bold: bool;
+   italic: bool;
+   link: opt Link;
+   "text": text;
+ };
+type TextSource = 
+ variant {
+   literal: text;
+   shopDescription;
+   shopName;
+ };
+type Subscribers = 
+ record {
+   orderUpdated: vec principal;
+   productDeleted: vec principal;
+   productUpdated: vec principal;
+   shopDetailsUpdated: vec principal;
+ };
+type StripeKeyStatus = 
+ record {
+   keyHint: text;
+   mode: Mode;
+ };
+type StorefrontTheme = 
+ record {
+   accent: ThemeColor;
+   buttonStyle: variant {
+                  outline;
+                  solid;
+                };
+   colorScheme: variant {
+                  dark;
+                  light;
+                };
+   density: variant {
+              airy;
+              compact;
+              regular;
+            };
+   fonts: variant {
+            archivoGrotesk;
+            grotesk;
+            mono;
+            monoGrotesk;
+          };
+   onAccent: TextTone;
+   onPrimary: TextTone;
+   primary: ThemeColor;
+   shape: variant {
+            rounded;
+            sharp;
+            soft;
+          };
+ };
+type StockAlert = 
+ record {
+   available: nat32;
+   lowStockThreshold: nat32;
+   product: record {
+              id: nat32;
+              title: text;
+            };
+   status: variant {
+             LowStock;
+             OutOfStock;
+           };
+   stock: nat32;
+   "variant": record {
+                id: nat32;
+                name: text;
+                sku: text;
+              };
+ };
+type ShopUpdatedEventData = 
+ record {
+   bannerImageUrl: opt text;
+   description: text;
+   locationPublic: bool;
+   logoUrl: text;
+   name: text;
+   physicalLocation: opt ShopLocation;
+   presentation: opt Presentation;
+ };
+type ShopTheme = 
+ record {
+   accent: ThemeColor;
+   colorScheme: variant {
+                  dark;
+                  light;
+                };
+   fonts: variant {
+            archivoGrotesk;
+            grotesk;
+            mono;
+            monoGrotesk;
+          };
+   hero: variant {
+           banner;
+           minimal;
+           split;
+         };
+   onAccent: TextTone;
+   onPrimary: TextTone;
+   primary: ThemeColor;
+   shape: variant {
+            rounded;
+            sharp;
+            soft;
+          };
+ };
+type ShopLocation = 
+ variant {
+   FullAddress: Address;
+   PostalCode: text;
+ };
+type ShopDetailsUpdatedEventListener = func (event:
+                                        ShopDetailsUpdatedEvent) -> ();
+type ShopDetailsUpdatedEvent = record {data: ShopUpdatedEventData;};
+type Shop = 
+ service {
+   /// Whether buyers can pay by card (in USD, through Stripe Checkout). Anyone may ask.
+   acceptsCardPayments: () -> (bool) query;
+   /// Archives the product and every variant (`#Archived`) and notifies product-deleted listeners. Owner or Admin.
+   archiveProduct: (id: ProductId) -> (Result_6);
+   /// Needs `Team.AssignRoles` and every permission in the role.
+   assignRole: ("principal": principal, id: RoleId) -> (Result_4);
+   /// Cancels `orderId` when still unpaid (`#created` or `#awaitingPayment`); rejects terminal or paid states.
+   /// Only the order's buyer, or someone with `Orders.Cancel`, may cancel it.
+   cancelOrder: (orderId: OrderId) -> (Result_56);
+   /// Reads the order's payment ledger (ICP or ckUSDC) once for its invoice account; if the balance
+   /// covers the total, marks the order paid (BRE-20). Only the order's buyer, an Owner or an Admin may
+   /// call it; anyone else is rejected before any ledger call. Each order's account is read at most once
+   /// every few seconds (`PaymentCheck.COOLDOWN_NANOS`); a check inside that window reports the last
+   /// read's balance without calling the ledger (BRE-70). The payment watcher marks funded orders paid
+   /// on its own timer, so this only makes that happen sooner.
+   /// A full payment is honored until the order is cancelled, even after `expiresAt`. An unpaid order past
+   /// `expiresAt` is expired on the spot. Paid orders return `#ok` again; cancelled orders are rejected.
+   checkPayment: (orderId: OrderId) -> (Result_54);
+   /// Same as `checkPayment`, kept for callers built before ckUSDC orders: it checks an order paid in
+   /// either token.
+   checkPaymentICP: (orderId: OrderId) -> (Result_54);
+   /// Builds an order for `caller` from line items and `paymentCurrency`, resolving unit prices (USD→ICP via XRC,
+   /// USD→USDC one to one, when the catalog has no price in that currency). USDC orders are paid in ckUSDC and
+   /// stored with its 6 decimals. Registers a per-order ledger subaccount when the order is stored. Rejects the
+   /// anonymous principal. `shippingAddress` is required, and checked, only when a line item is a `#Physical`
+   /// product (any country, as an ISO 3166-1 alpha-2 code); a digital or service order stores no address (BRE-23).
+   /// Rejects a buyer who already holds `OrderAccess.MAX_UNPAID_ORDERS_PER_BUYER` orders awaiting payment (BRE-111).
+   createOrder: (input:
+    record {
+      items:
+       vec
+        record {
+          productId: ProductId;
+          quantity: nat32;
+          title: text;
+          variantId: VariantId;
+        };
+      paymentCurrency: Currency;
+      shippingAddress: opt ShippingAddress;
+    }) -> (Result_53);
+   /// Creates a product from `input`, assigns IDs and inventory rows, and rejects an SKU listed twice or already used. Owner or Admin.
+   /// If any variant is `#Active`, the product becomes `#Active` and subscribers are notified.
+   createProduct: (input: CreateProductInput) -> (Result_6);
+   /// Adds a release listing existing tracks in order. It may start with none while the artist
+   /// uploads them: it's listed, and can be sold, once it has one. Needs `Music.Edit` and a signed-in
+   /// caller.
+   createRelease: (input: ReleaseInput) -> (Result_5);
+   /// Needs `Team.EditRoles` and every permission in the role.
+   createRole: (name: text, permissions: vec PermissionId) -> (Result_51);
+   /// The buyer of card order `orderId` gets a Stripe Checkout page to pay it on. The first call
+   /// creates the session (expiring in about 31 minutes, when the order expires too) and records it
+   /// on the order; later calls return the same page. `successUrl` and `cancelUrl` are where Stripe
+   /// sends the buyer afterwards: `https://`, or `http://` to localhost for development. Stripe
+   /// replaces `{CHECKOUT_SESSION_ID}` in them. Payment is confirmed by `checkPayment`, or by the
+   /// expiry sweep when the session ends.
+   createStripeCheckout: (orderId: OrderId, successUrl: text, cancelUrl:
+    text) -> (Result_50);
+   /// Adds a track. Needs `Music.Edit` and a signed-in caller. Every track needs an MP3 file
+   /// (`#mp3_320`); files are private vault keys, the preview a public one.
+   createTrack: (input: TrackInput) -> (Result_1);
+   /// Permanently removes the product, variants, and inventory; order history keeps line snapshots.
+   deleteProduct: (id: ProductId) -> (Result_12);
+   /// Deletes a release that never sold (`#ReleaseSold`: archive it instead) and no variant sells
+   /// (`#InUse`). Needs `Music.Edit` and a signed-in caller.
+   deleteRelease: (id: ReleaseId) -> (Result_9);
+   /// Deletes the role and takes it from its members. Needs `Team.EditRoles` and every permission in the role.
+   deleteRole: (id: RoleId) -> (Result_4);
+   /// Deletes a track that no release lists (`#InUse` otherwise). Needs `Music.Edit` and a signed-in
+   /// caller. Its vault files stay until deleted there.
+   deleteTrack: (id: TrackId) -> (Result_9);
+   /// Throws away unpublished changes: the draft goes back to the published layout. Needs
+   /// `Storefront.Edit`, a signed-in caller and the current revision. Returns the new revision.
+   discardStorefrontDraft: (expectedRevision: nat) -> (Result_48);
+   /// Owner or Admin: low-stock alerts derived from inventory thresholds (one alert per qualifying
+   /// inventory row). Other callers get `[]` (BRE-105). Superseded by `getDashboard`'s `stock`.
+   getAlerts: () -> (vec Alert) query;
+   /// Returns distinct non-empty category strings assigned across products.
+   getCategories: () -> (vec text) query;
+   /// Returns this canister's cycle balance. No caller check: the balance is not private (anyone can
+   /// read it from core's `getShopCycles`), and a fake 0 for outsiders would look like a drained shop.
+   getCyclesBalance: () -> (nat) query;
+   /// Owner or Admin: everything the admin dashboard shows, in one call (BRE-146). See
+   /// `Dashboard.Dashboard` for each field. Reads every order, like `listOrders`.
+   getDashboard: () -> (Result_47) query;
+   /// Owner or Admin: the configured private media key for a variant, or `null` if the default path
+   /// convention applies. Other callers always get `null` (BRE-105).
+   getDigitalAssetKey: (productId: ProductId, variantId: VariantId) ->
+    (opt text) query;
+   /// Returns the cached XRC quote for `baseAsset`/`quoteAsset` when fresh. Otherwise spends cycles on a new XRC
+   /// call and caches it. Open to any caller, anonymous included (storefront checkout): new calls come out of a
+   /// per-minute budget shared by all pairs and callers, and return `#RateLimited` once it is spent.
+   getExchangeRates: (baseAsset: Asset, quoteAsset: Asset) ->
+    (FetchExchangeRateResponse);
+   /// Owner or Admin: one row per inventory entry with variant/product labels, available qty, and stock
+   /// status, a page at a time in variant ID order. Other callers get an empty page (BRE-105).
+   getInventory: (after: opt VariantId, limit: opt nat) -> (Page_8) query;
+   /// This canister's recent log entries, newest first (at most `limit`, capped at
+   /// `Logger.MAX_LOGS`). Whether they survive an upgrade depends on the canister: shop keeps its
+   /// log in stable state, core's is transient and an upgrade clears it. Authorized callers only.
+   getLogs: (limit: opt nat) -> (Result_46) query;
+   /// Returns the configured media canister principal, if set, to any signed-in caller. It isn't secret:
+   /// buyers build `requestDigitalDelivery`'s download link from it and public assets are served from it.
+   /// Private files stay behind the HMAC ticket the vault checks. Core reads it for `linkShopVault`.
+   getMediaCanisterId: () -> (opt principal) query;
+   /// The events the caller is subscribed to, so core can tell when it has lost a subscription and
+   /// subscribe again (BRE-195). No permission check: it shows only the caller's own subscriptions.
+   getMyEventSubscriptions: () -> (vec EventKind) query;
+   /// Order `orderId` for its buyer, `Orders.View`, controllers (core, for the shops it hosts) or
+   /// Marketplace. Core reads the orders it missed `OrderUpdated` notifications for, after finding
+   /// them in `listOrderEvents` (BRE-203), so the same callers may read both.
+   getMyOrder: (orderId: OrderId) -> (Result_45) query;
+   /// The caller's own roles and effective permissions. Needs no permission: it shows only the caller's own.
+   getMyPermissions: () -> (MyPermissions) query;
+   /// Order `orderId`'s history, oldest first (BRE-133), for its buyer or an Owner or Admin. Events
+   /// name who acted only by role (`#buyer`, `#merchant`, `#automatic`), never by principal.
+   getOrderHistory: (orderId: OrderId) -> (Result_44) query;
+   /// ICRC-1 account (`owner` + `subaccount`) for paying order `orderId`, and the ledger token it is
+   /// paid in ("ICP" or "ckUSDC"), for use with that ledger's `icrc1_transfer` (BRE-20). Errors if the
+   /// order is missing or its currency has no ledger. The account is the same on both ledgers.
+   getOrderPaymentAccount: (orderId: OrderId) -> (Result_43) query;
+   /// ICRC-1 account (`owner` + `subaccount`) for paying order `orderId` in ICP, for use with `icrc1_transfer`;
+   /// errors if the order is missing or not ICP. Same destination as `getOrderPaymentAddressICP`.
+   getOrderPaymentAccountICP: (orderId: OrderId) -> (Result_42) query;
+   /// Hex-encoded ledger account identifier for paying order `orderId` in ICP; errors if the order is missing or not ICP.
+   /// Only the ICP ledger takes these legacy account IDs; use `getOrderPaymentAccount` for ckUSDC.
+   getOrderPaymentAddressICP: (orderId: OrderId) -> (Result_41) query;
+   /// The permissions roles can be made of, with what each includes. Public: it's the same for every caller.
+   getPermissionCatalog: () -> (vec PermissionDef) query;
+   /// Returns the product `id` with per-variant stock and stock status, or `null` if missing.
+   getProduct: (id: ProductId) -> (opt ProductWithInventory) query;
+   getProductAttributeConfig: (productId: ProductId) ->
+    (opt ProductAttributeConfig) query;
+   /// Product records (catalog view without merged inventory fields), each variant with the release it
+   /// sells, a page at a time in ID order (see `lib/Pagination`: pass `next` back as `after`).
+   getProducts: (after: opt ProductId, limit: opt nat) -> (Page_7) query;
+   /// Release `id` with its tracks, archived or not, or null. No caller check: past buyers see what
+   /// they bought, and it holds no private file keys.
+   getPublicRelease: (id: ReleaseId) -> (opt PublicRelease) query;
+   /// The marketplaces the Owner recognized. Public: a shop's marketplaces are no secret.
+   getRecognizedMarketplaces: () -> (vec RecognizedMarketplace) query;
+   /// Storefront-facing name, description, media URLs, and location visibility filtered by caller role.
+   getShopDetails: () ->
+    (record {
+       bannerImageUrl: opt text;
+       description: text;
+       logoUrl: opt text;
+       name: text;
+       physicalLocation: opt ShopLocation;
+       showPhysicalLocation: bool;
+     }) query;
+   /// The presentation, artist preset and artist profile, each optional so an older client gets null
+   /// for a value it can't decode. No caller check: it's how the public shop page looks.
+   getShopPresentation: () -> (PresentationView) query;
+   /// The storefront theme, or null when the shop hasn't set one. No caller check: the theme is how
+   /// the public storefront looks, so anyone may read it.
+   getShopTheme: () -> (opt ShopTheme) query;
+   /// Owner or Admin: aggregate counts of products, active listings, low-stock SKUs, and open
+   /// orders (paid, not yet fulfilled). Other callers get all zeros (BRE-105). Superseded by
+   /// `getDashboard`; kept for frontends talking to shops not yet upgraded.
+   getStats: () ->
+    (record {
+       activeListings: nat32;
+       lowStockItems: nat32;
+       openOrders: nat32;
+       totalProducts: nat32;
+     }) query;
+   /// The published home page layout, or null when the shop hasn't published one (the storefront then
+   /// shows its default layout). No caller check: it's what the public storefront shows, and holds only
+   /// design content. Sections and elements are optional so a client that can't decode a newer one
+   /// skips it.
+   getStorefront: () -> (opt PublishedLayoutView) query;
+   /// The draft layout and its revision, for the editor. Needs `Storefront.Edit`, so unpublished pages
+   /// stay private.
+   getStorefrontEditor: () -> (Result_40) query;
+   /// Owner or Admin: the mode and last four characters of the Stripe key, or null when none is
+   /// set. Null for everyone else.
+   getStripeKeyStatus: () -> (opt StripeKeyStatus) query;
+   /// The lyrics of track `id`, if a release lists it. No caller check: listed tracks are public.
+   getTrackLyrics: (id: TrackId) -> (opt text) query;
+   /// Owner or Admin: the main account's balance and the ledger fee for each token, as `withdrawFunds`
+   /// sees them. An update call, since it reads both ledgers; refused callers get no ledger calls.
+   getWithdrawableBalances: () -> (Result_39);
+   /// Lets `principal` (core) subscribe to the shop's events and see a private location. Owner only.
+   grantMarketplaceAccess: ("principal": principal) -> (Result_3);
+   /// Whether release `id` has sold, so it can't lose a track or be deleted. Needs `Music.Edit`.
+   isReleaseSold: (id: ReleaseId) -> (Result_37) query;
+   /// Lists each event's subscribers. Owner or Admin.
+   listEventSubscribers: () -> (Result_36) query;
+   /// Members (principals with at least one role) in principal order. Needs `Team.View`.
+   listMembers: (after: opt principal, limit: opt nat) -> (Result_35) query;
+   /// Orders placed by `caller`, newest first, a page at a time. Empty for the anonymous principal.
+   listMyOrders: (after: opt OrderId, limit: opt nat) -> (Page_4) query;
+   /// Every order's history across the shop, oldest first, after sequence number `after` (see
+   /// `lib/Pagination`). A subscriber that missed `OrderUpdated` notifications pages from the last
+   /// `seq` it applied. Controllers (core, for the shops it hosts), Marketplace and `Orders.View`
+   /// only: events reveal what was ordered when. Other callers get an empty page.
+   listOrderEvents: (after: opt nat, limit: opt nat) -> (Page_5) query;
+   /// Owner or Admin: every stored order, newest first, a page at a time (see `lib/Pagination`:
+   /// pass `next` back as `after`). Other callers get an empty page.
+   listOrders: (after: opt OrderId, limit: opt nat) -> (Page_4) query;
+   /// A page of active releases that have a track, without their tracks (`getPublicRelease` has
+   /// them), in ID order. No caller check: it's the storefront's catalog, and holds no private file
+   /// keys.
+   listPublicReleases: (after: opt ReleaseId, limit: opt nat) ->
+    (Page_3) query;
+   /// A page of every release, archived ones included, for the editor. Needs `Music.Edit`.
+   listReleases: (after: opt ReleaseId, limit: opt nat) -> (Result_34) query;
+   /// Roles in ID order. Needs `Team.View`.
+   listRoles: (after: opt RoleId, limit: opt nat) -> (Result_33) query;
+   /// A page of every track, with private file keys and lyrics, for the editor: at most
+   /// `Music.Limits.MAX_TRACKS_PAGE` tracks. Needs `Music.Edit`.
+   listTracks: (after: opt TrackId, limit: opt nat) -> (Result_32) query;
+   /// Owner or Admin: main canister ledger account plus tracked subaccounts with live `icrc1_balance_of` balances.
+   listWalletAccounts: () -> (vec Account) query;
+   /// `Funds.View`: the saved withdrawal addresses, oldest first. Empty for anyone else, since
+   /// they're the merchant's own accounts.
+   listWithdrawalAddresses: () -> (vec WithdrawalAddress) query;
+   /// Marks order `orderId` fulfilled: every line not yet delivered is recorded as sent by `method`
+   /// (`#inPerson` when null), then the order becomes `#fulfilled`. Allowed from `#paid`, or from
+   /// `#partiallyFulfilled` (some digital lines already downloaded). Needs `Orders.Fulfill`.
+   markOrderFulfilled: (orderId: OrderId, method: opt DeliveryMethod) ->
+    (Result_31);
+   /// Publishes the draft: buyers see it from now on. Needs `Storefront.Edit`, a signed-in caller and the
+   /// current revision.
+   publishStorefront: (expectedRevision: nat) -> (Result_30);
+   /// Returns funds sent to a cancelled order's payment account (a late or partial payment), minus the
+   /// ledger fee, on every supported ledger. The buyer may name the destination account (default: the
+   /// buyer's own account). An Owner or Admin may trigger it, but the funds always go to the buyer.
+   reclaimOrderPayment: (orderId: OrderId, to: opt RefundDestination) ->
+    (Result_29);
+   /// Recognizes the marketplace whose core (backend) canister is `backendCanisterId`: asks it for
+   /// its frontend canister and name, records them, and grants it Marketplace access. Owner only.
+   /// Recognizing it again refreshes the details.
+   recognizeMarketplace: (backendCanisterId: principal) -> (Result_28);
+   /// Removes `principal`'s subscription to `event`; returns whether it had one. Owner or Admin.
+   removeEventSubscriber: (event: EventKind, "principal": principal) ->
+    (Result_27);
+   /// Owner only. Forgets the Stripe key and turns card payments off. Orders already sent to
+   /// Stripe Checkout can't be confirmed afterwards, and expire unpaid.
+   removeStripeKey: () -> (Result_3);
+   /// Removes an account from the tracked set. Allowed only when the account balance is 0 and caller is the shop owner.
+   removeWalletAccount: (accountId: text) -> (Result_25);
+   /// Owner only: removes `to` from the saved withdrawal addresses.
+   removeWithdrawalAddress: (to: Destination) -> (Result_24);
+   /// Mints a short-lived HMAC delivery ticket for a paid digital line item. Caller must be the order buyer.
+   /// The first ticket for a line records it as delivered, which can fulfil the order (BRE-133).
+   /// The download link is `<vault URL><mediaKey>?token=<token>`, built by the client: the shop
+   /// doesn't know which network's gateway serves its vault (BRE-140).
+   requestDigitalDelivery: (orderId: OrderId, lineIndex: nat, ttlSeconds:
+    opt nat) -> (Result_23);
+   /// Tickets for every file of the release order line `lineIndex` sells, in `format`, in track
+   /// order (BRE-185). Only the order's buyer, once it is paid. The files are read from the release
+   /// as it is now, so tracks added and files replaced since the sale are included; a track with no
+   /// file in `format` is left out (`#FormatUnavailable` when none has one). Each link is
+   /// `<vault URL><mediaKey>?token=<token>`, built by the client, and works until `expiresAt`. The
+   /// first call for a line records it as delivered, as `requestDigitalDelivery` does. Signing is
+   /// bounded by the release's track cap (`ReleaseDelivery.MAX_FILES`) and costs one `raw_rand`.
+   requestReleaseDelivery: (orderId: OrderId, lineIndex: nat, format:
+    AudioFormat, ttlSeconds: opt nat) -> (Result_22);
+   /// Takes Marketplace access from `principal`, and forgets it as a recognized marketplace. Owner only.
+   revokeMarketplaceAccess: ("principal": principal) -> (Result_3);
+   /// Replaces the HMAC secret that signs delivery tickets with a fresh random one and pushes it to
+   /// the media canister. Outstanding tickets stop working. Owner only.
+   rotateHmacSecretKey: () -> (Result_20);
+   /// Saves the draft layout and returns the new revision. Needs `Storefront.Edit`, a signed-in caller
+   /// and the revision the editor last saw (`#RevisionConflict` otherwise). Every limit is checked and
+   /// the theme must pass WCAG AA before anything is stored.
+   saveStorefrontDraft: (layout: LayoutInput, expectedRevision: nat) ->
+    (Result_19);
+   /// Owner only: saves `to` with `name`, or renames it if it's already saved. At most
+   /// `WithdrawalAddresses.MAX_ADDRESSES`, each name at most `MAX_NAME_CHARS` characters.
+   /// `withdrawFunds` doesn't require a saved address.
+   saveWithdrawalAddress: (to: Destination, name: text) -> (Result_18);
+   /// Replaces the artist profile, or with null removes it. Needs `Storefront.Edit` and a signed-in
+   /// caller. Every length and count is checked before anything is stored (`#Invalid` lists each
+   /// problem).
+   setArtistProfile: (artistProfile: opt ArtistProfile) -> (Result_17);
+   /// Stores the private media object key for a digital product variant. Owner or Admin.
+   setDigitalAssetKey: (productId: ProductId, variantId: VariantId, mediaKey:
+    text) -> (Result_15);
+   /// Sets the HMAC secret used to mint delivery tickets, and a version number recorded with it;
+   /// propagates the key to the media canister when configured. Owner only. Prefer
+   /// `rotateHmacSecretKey`, which draws the key from `raw_rand`.
+   setHmacSecretKey: (version: nat8, key: blob) -> (Result_15);
+   /// Sets the media canister (asset) canister principal used for shop uploads and URLs. Owner only.
+   setMediaCanisterId: (canisterId: principal) -> (Result_3);
+   /// Hands shop ownership to `principal`; the caller stops being Owner. Only the Owner may call.
+   setOwner: ("principal": principal) -> (Result_3);
+   setProductAttributeConfig: (productId: ProductId, config:
+    ProductAttributeConfig) -> (Result_12);
+   /// Archives (`#Archived`) or restores (`#Active`) a release. Archived releases leave the public list
+   /// but past buyers keep them. Needs `Music.Edit` and a signed-in caller.
+   setReleaseStatus: (id: ReleaseId, status: MusicStatus) -> (Result_5);
+   /// Shows the shop as a storefront or an artist page, and sets the artist preset unless it's null.
+   /// Needs `Storefront.Edit` and a signed-in caller. Tells subscribers (core) when the presentation
+   /// changed, with a `ShopDetailsUpdated` event.
+   setShopPresentation: (mode: Presentation, artistPreset:
+    opt ArtistPreset) -> (Result_11);
+   /// Owner only. Checks `key` is a restricted key (`rk_…`) that can read Checkout Sessions, by
+   /// listing one session, then stores it, replacing any earlier key. Secret keys are refused:
+   /// shop state is readable by node operators, so the key is restricted to limit what a leak
+   /// could do. Give the restricted key write access to Checkout Sessions and nothing else.
+   setStripeKey: (key: text) -> (Result_10);
+   /// Archives (`#Archived`) or restores (`#Active`) a track. Needs `Music.Edit` and a signed-in caller.
+   setTrackStatus: (id: TrackId, status: MusicStatus) -> (Result_1);
+   /// Sets the release variant `variantId` sells, or with null goes back to its single media key.
+   /// The release must exist, be active and have a track. A variant that has sold can't move off its release
+   /// (`#ReleaseSold`): its buyers would lose it. Linking a sold variant marks the release sold. Needs
+   /// `Music.Edit` and a signed-in caller.
+   setVariantDeliverable: (variantId: VariantId, deliverable:
+    opt Deliverable) -> (Result_9);
+   /// The element types (and their settings versions, with `"section"`'s) this shop accepts. The
+   /// editor offers only these. No caller check: it describes the wasm, not the shop's data.
+   storefrontElementTypes: () -> (vec ElementType) query;
+   /// The outcall transform for Stripe replies (`Stripe.transform`): pure, so anyone may call it.
+   stripeTransform: (args: TransformArgs) -> (HttpRequestResult) query;
+   /// Registers `caller` as a subscriber for order create/update events, which carry the buyer
+   /// and the order contents.
+   subscribeToOrderUpdated: (listener: OrderUpdatedEventListener) -> ();
+   /// Registers `caller` as a subscriber for product delete/archive notifications.
+   subscribeToProductDeleted: (listener: ProductDeletedEventListener) -> ();
+   /// Registers `caller` as a subscriber for active product create/update events.
+   subscribeToProductUpdated: (listener: ProductUpdatedEventListener) -> ();
+   /// Registers `caller` as a subscriber for shop metadata and location change events.
+   subscribeToShopDetailsUpdated: (listener:
+    ShopDetailsUpdatedEventListener) -> ();
+   /// Transfers all funds from the account identified by accountId to the store's main account. Callable only by the shop owner.
+   /// An order's payment subaccount can be swept only once the order is paid: before that the funds are the
+   /// buyer's payment in progress, and after a cancellation they are the buyer's to reclaim (`#InvalidStatus`).
+   transferFundsToMain: (accountId: text) -> (Result_8);
+   /// Needs `Team.AssignRoles` and every permission in the role.
+   unassignRole: ("principal": principal, id: RoleId) -> (Result_4);
+   /// Removes the caller's own subscription, so it needs no role.
+   unsubscribeFromOrderUpdated: () -> ();
+   /// Removes the caller's own subscription, so it needs no role.
+   unsubscribeFromProductDeleted: () -> ();
+   /// Removes the caller's own subscription, so it needs no role.
+   unsubscribeFromProductUpdated: () -> ();
+   /// Removes the caller's own subscription, so it needs no role.
+   unsubscribeFromShopDetailsUpdated: () -> ();
+   /// Applies `stockDelta` and `reservedDelta` to `input.variantId`, optionally updates low-stock threshold. Owner or Admin.
+   updateInventory: (input: UpdateInventoryRequest) -> (Result_7);
+   /// Updates product `input.id` and its variants, matched by SKU: new SKUs create new variant IDs and inventory,
+   /// and variants left out are removed. Rejects an SKU listed twice or used by another product. Owner or Admin.
+   /// Active products trigger a product-updated notification.
+   updateProduct: (input: UpdateProductInput) -> (Result_6);
+   /// Replaces a release's details and track list. Once it has sold, every track must stay
+   /// (`#ReleaseSold`); reordering and adding are fine. A release a variant sells keeps at least one
+   /// track (`#InUse`). Needs `Music.Edit` and a signed-in caller.
+   updateRelease: (id: ReleaseId, input: ReleaseInput) -> (Result_5);
+   /// Needs `Team.EditRoles` and every permission in the role before and after.
+   updateRole: (id: RoleId, name: text, permissions: vec PermissionId) ->
+    (Result_4);
+   /// Patches shop metadata, optional physical location, and public location flag; notifies shop-details subscribers. Owner or Admin.
+   updateShopDetails: (input:
+    record {
+      bannerImageUrl: opt text;
+      description: opt text;
+      logoUrl: opt text;
+      name: opt text;
+      physicalLocation:
+       opt variant {
+             FullAddress: opt Address;
+             PostalCode: text;
+           };
+      showPhysicalLocation: opt bool;
+    }) -> (Result_3);
+   /// Sets the storefront theme, or with null goes back to the marketplace's look. Needs
+   /// `Storefront.Edit` and a signed-in caller. Rejects (`#ContrastTooLow`, naming each pairing) a theme
+   /// whose colors don't meet WCAG AA everywhere the storefront and checkout use them.
+   updateShopTheme: (theme: opt ShopTheme) -> (Result_2);
+   /// Replaces a track's details and files; buyers of releases listing it get the new files. Needs
+   /// `Music.Edit` and a signed-in caller.
+   updateTrack: (id: TrackId, input: TrackInput) -> (Result_1);
+   /// Owner only: sends `token` ("ICP" or "ckUSDC") from the shop's main account to `to`, an ICRC-1
+   /// account outside this shop. `amount` is in the token's smallest unit; null sends everything the
+   /// main account holds minus the ledger fee, read from the ledger at call time. The fee is paid on top.
+   /// `createdAtTime` (nanoseconds since the epoch, default: now) is the transfer's `created_at_time`:
+   /// a client that retries after a timeout passes the same value again, and if the first attempt went
+   /// through, the ledger reports a duplicate and this returns that transfer's block index instead of
+   /// sending twice (BRE-76, BRE-70). Returns the block index and the amount sent.
+   withdrawFunds: (token: Token, to: Destination, amount: opt nat,
+    createdAtTime: opt nat64) -> (Result);
+ };
+type ShippingAddress = 
+ record {
+   city: text;
+   country: text;
+   line1: text;
+   line2: opt text;
+   name: text;
+   phone: opt text;
+   postalCode: text;
+   region: text;
+ };
+type SetPresentationError = variant {Unauthorized: text;};
+type SetArtistProfileError = 
+ variant {
+   Invalid: vec ProfileProblem;
+   Unauthorized: text;
+ };
+type SectionView = 
+ record {
+   background: variant {
+                 accent;
+                 card;
+                 image: ImageSource;
+                 muted;
+                 none;
+                 primary;
+               };
+   columns: vec ColumnView;
+   id: nat;
+   padding: variant {
+              large;
+              medium;
+              none;
+              small;
+            };
+   verticalAlign: variant {
+                    center;
+                    end;
+                    start;
+                  };
+   width: variant {
+            contained;
+            full;
+          };
+ };
+type Section = 
+ record {
+   background: variant {
+                 accent;
+                 card;
+                 image: ImageSource;
+                 muted;
+                 none;
+                 primary;
+               };
+   columns: vec Column;
+   id: nat;
+   padding: variant {
+              large;
+              medium;
+              none;
+              small;
+            };
+   verticalAlign: variant {
+                    center;
+                    end;
+                    start;
+                  };
+   width: variant {
+            contained;
+            full;
+          };
+ };
+type SaveDraftError = 
+ variant {
+   ContrastTooLow: vec ContrastFailure;
+   Invalid: vec ValidationError;
+   RevisionConflict: nat;
+   Unauthorized: text;
+ };
+type SaveAddressError = 
+ variant {
+   InvalidDestination: text;
+   InvalidName: text;
+   LimitReached: nat;
+   Unauthorized: text;
+ };
+type Sales = 
+ record {
+   orders: nat32;
+   revenue: vec Money__1;
+ };
+type SKU = text;
+type RoleView = 
+ record {
+   id: RoleId;
+   name: text;
+   permissions: vec PermissionId;
+ };
+type RoleId = nat;
+type RichTextNode = 
+ variant {
+   bulletList: vec vec TextSpan;
+   heading: text;
+   paragraph: vec TextSpan;
+ };
+type Result_9 = 
+ variant {
+   err: MusicError;
+   ok;
+ };
+type Result_8 = 
+ variant {
+   err: vec TranferFundsToMainError;
+   ok;
+ };
+type Result_7 = 
+ variant {
+   err: variant {
+          InputError: text;
+          NotFoundError: text;
+          Unauthorized: text;
+        };
+   ok: InventoryItem;
+ };
+type Result_6 = 
+ variant {
+   err: variant {
+          InputError: text;
+          InternalError: text;
+          Unauthorized: text;
+        };
+   ok: Product;
+ };
+type Result_56 = 
+ variant {
+   err: variant {
+          InputError: text;
+          NotFoundError: text;
+          Unauthorized: text;
+        };
+   ok: Order;
+ };
+type Result_54 = 
+ variant {
+   err: variant {
+          NotFoundError: text;
+          PaymentFailed: text;
+          Unauthorized: text;
+        };
+   ok;
+ };
+type Result_53 = 
+ variant {
+   err: variant {InternalError: text;};
+   ok: Order;
+ };
+type Result_51 = 
+ variant {
+   err: Error;
+   ok: RoleId;
+ };
+type Result_50 = 
+ variant {
+   err:
+    variant {
+      Busy: text;
+      InputError: text;
+      InvalidStatus: text;
+      NotFoundError: text;
+      PaymentFailed: text;
+      Unauthorized: text;
+    };
+   ok: record {url: text;};
+ };
+type Result_5 = 
+ variant {
+   err: MusicError;
+   ok: Release;
+ };
+type Result_48 = 
+ variant {
+   err: PublishError;
+   ok: nat;
+ };
+type Result_47 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok: Dashboard;
+ };
+type Result_46 = 
+ variant {
+   err: variant {Unauthorized;};
+   ok: vec Log;
+ };
+type Result_45 = 
+ variant {
+   err: variant {
+          NotFoundError: text;
+          Unauthorized: text;
+        };
+   ok: Order;
+ };
+type Result_44 = 
+ variant {
+   err: variant {
+          NotFoundError: text;
+          Unauthorized: text;
+        };
+   ok: vec OrderEvent;
+ };
+type Result_43 = 
+ variant {
+   err: variant {NotFoundError: text;};
+   ok: record {
+         account: Account__1;
+         token: text;
+       };
+ };
+type Result_42 = 
+ variant {
+   err: variant {NotFoundError: text;};
+   ok: Account__1;
+ };
+type Result_41 = 
+ variant {
+   err: variant {NotFoundError: text;};
+   ok: text;
+ };
+type Result_40 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok: EditorState;
+ };
+type Result_4 = 
+ variant {
+   err: Error;
+   ok;
+ };
+type Result_39 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok: vec record {
+             balance: nat;
+             fee: nat;
+             token: Token;
+           };
+ };
+type Result_37 = 
+ variant {
+   err: MusicError;
+   ok: bool;
+ };
+type Result_36 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok: Subscribers;
+ };
+type Result_35 = 
+ variant {
+   err: Error;
+   ok: Page_6;
+ };
+type Result_34 = 
+ variant {
+   err: MusicError;
+   ok: Page_2;
+ };
+type Result_33 = 
+ variant {
+   err: Error;
+   ok: Page_1;
+ };
+type Result_32 = 
+ variant {
+   err: MusicError;
+   ok: Page;
+ };
+type Result_31 = 
+ variant {
+   err: variant {
+          InvalidStatus: text;
+          NotFoundError: text;
+          Unauthorized: text;
+        };
+   ok: Order;
+ };
+type Result_30 = 
+ variant {
+   err: PublishError;
+   ok;
+ };
+type Result_3 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok;
+ };
+type Result_29 = 
+ variant {
+   err:
+    variant {
+      InvalidStatus: text;
+      NotFoundError: text;
+      NothingToReclaim: text;
+      TransferError: text;
+      Unauthorized: text;
+    };
+   ok: vec OrderRefund;
+ };
+type Result_28 = 
+ variant {
+   err: RecognizeError;
+   ok: RecognizedMarketplace;
+ };
+type Result_27 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok: bool;
+ };
+type Result_25 = 
+ variant {
+   err:
+    variant {
+      NonZeroBalanceError: record {
+                             balance: nat;
+                             msg: text;
+                           };
+      NotFoundError: text;
+      Unauthorized: text;
+    };
+   ok;
+ };
+type Result_24 = 
+ variant {
+   err: RemoveError;
+   ok;
+ };
+type Result_23 = 
+ variant {
+   err: EntitlementError;
+   ok: DigitalDeliveryResponse;
+ };
+type Result_22 = 
+ variant {
+   err: ReleaseDeliveryError;
+   ok: ReleaseDeliveryResponse;
+ };
+type Result_20 = 
+ variant {
+   err: variant {
+          Failed: text;
+          Unauthorized: text;
+        };
+   ok;
+ };
+type Result_2 = 
+ variant {
+   err: UpdateThemeError;
+   ok;
+ };
+type Result_19 = 
+ variant {
+   err: SaveDraftError;
+   ok: nat;
+ };
+type Result_18 = 
+ variant {
+   err: SaveAddressError;
+   ok: WithdrawalAddress;
+ };
+type Result_17 = 
+ variant {
+   err: SetArtistProfileError;
+   ok;
+ };
+type Result_15 = 
+ variant {
+   err: variant {
+          InputError: text;
+          Unauthorized: text;
+        };
+   ok;
+ };
+type Result_12 = 
+ variant {
+   err: variant {
+          InputError: text;
+          InternalError: text;
+          Unauthorized: text;
+        };
+   ok;
+ };
+type Result_11 = 
+ variant {
+   err: SetPresentationError;
+   ok;
+ };
+type Result_10 = 
+ variant {
+   err: variant {
+          Busy: text;
+          InvalidKey: text;
+          Unauthorized: text;
+        };
+   ok: StripeKeyStatus;
+ };
+type Result_1 = 
+ variant {
+   err: MusicError;
+   ok: Track;
+ };
+type Result = 
+ variant {
+   err: WithdrawError;
+   ok: record {
+         amount: nat;
+         blockIndex: nat;
+       };
+ };
+type RemoveError = 
+ variant {
+   NotFound;
+   Unauthorized: text;
+ };
+type ReleaseStyle = 
+ variant {
+   grid;
+   list;
+   row;
+ };
+type ReleaseSource = 
+ variant {
+   all;
+   kind: ReleaseKind;
+   picked: vec ReleaseId;
+ };
+type ReleaseSort = 
+ variant {
+   manual;
+   newest;
+ };
+type ReleaseKind = 
+ variant {
+   Album;
+   EP;
+   Single;
+ };
+type ReleaseInput = 
+ record {
+   artist: text;
+   artworkKey: text;
+   genre: opt text;
+   kind: ReleaseKind;
+   releaseDate: opt Time;
+   title: text;
+   tracks: vec TrackId;
+   upc: opt text;
+ };
+type ReleaseId = nat32;
+type ReleaseDownload = 
+ record {
+   bytes: nat;
+   format: AudioFormat;
+   mediaKey: text;
+   token: text;
+   trackId: TrackId;
+ };
+type ReleaseDeliveryResponse = 
+ record {
+   expiresAt: nat64;
+   files: vec ReleaseDownload;
+   format: AudioFormat;
+   releaseId: ReleaseId;
+ };
+type ReleaseDeliveryError = 
+ variant {
+   FormatUnavailable: text;
+   InvalidInput: text;
+   InvalidLineIndex: text;
+   MediaNotConfigured: text;
+   NotARelease: text;
+   NotFound: text;
+   OrderNotPaid: text;
+   Unauthorized: text;
+ };
+type Release = 
+ record {
+   artist: text;
+   artworkKey: text;
+   genre: opt text;
+   id: ReleaseId;
+   kind: ReleaseKind;
+   releaseDate: opt Time;
+   status: MusicStatus;
+   title: text;
+   tracks: vec TrackId;
+   upc: opt text;
+ };
+type RefundDestination = 
+ record {
+   owner: principal;
+   subaccount: opt blob;
+ };
+type RecognizedMarketplace = 
+ record {
+   backendCanisterId: principal;
+   frontendCanisterId: opt principal;
+   name: text;
+   recognizedAt: int;
+   recognizedBy: principal;
+ };
+type RecognizeError = 
+ variant {
+   MarketplaceUnreachable: text;
+   Unauthorized: text;
+ };
+type PublishedLayoutView = 
+ record {
+   home: vec opt SectionView;
+   theme: opt StorefrontTheme;
+   updatedAt: Time;
+   vaultId: opt principal;
+ };
+type PublishError = 
+ variant {
+   NoDraft;
+   RevisionConflict: nat;
+   Unauthorized: text;
+ };
+type PublicTrack = 
+ record {
+   artists: vec text;
+   credits: vec Credit;
+   durationMs: nat32;
+   explicit: bool;
+   files: vec PublicAudioFile;
+   hasLyrics: bool;
+   id: TrackId;
+   isrc: opt text;
+   previewKey: opt text;
+   title: text;
+ };
+type PublicReleaseSummary = 
+ record {
+   artist: text;
+   artworkKey: text;
+   durationMs: nat;
+   genre: opt text;
+   id: ReleaseId;
+   kind: ReleaseKind;
+   releaseDate: opt Time;
+   title: text;
+   trackCount: nat;
+   upc: opt text;
+ };
+type PublicRelease = 
+ record {
+   artist: text;
+   artworkKey: text;
+   durationMs: nat;
+   genre: opt text;
+   id: ReleaseId;
+   kind: ReleaseKind;
+   releaseDate: opt Time;
+   status: MusicStatus;
+   title: text;
+   tracks: vec PublicTrack;
+   upc: opt text;
+ };
+type PublicAudioFile = 
+ record {
+   bytes: nat;
+   format: AudioFormat;
+ };
+type ProfileProblem = 
+ variant {
+   BioTooLong: record {max: nat;};
+   InvalidLink: record {
+                  index: nat;
+                  reason: text;
+                };
+   InvalidPhoto: text;
+   TooManyLinks: record {max: nat;};
+ };
+type ProductWithInventory = 
+ record {
+   category: opt text;
+   description: text;
+   id: ProductId;
+   productType: ProductType;
+   status: ProductStatus;
+   tags: vec text;
+   title: text;
+   variants: vec ProductVariantWithInventory;
+ };
+type ProductVariantWithInventory = 
+ record {
+   attributes: vec ProductAttribute;
+   deliverable: opt Deliverable;
+   id: VariantId;
+   imageUrls: vec text;
+   name: text;
+   price: PriceContext;
+   pricing: opt Pricing;
+   productId: ProductId;
+   sku: SKU;
+   status: ProductStatus;
+   stock: nat32;
+   stockStatus: variant {
+                  InStock;
+                  LowStock;
+                  OutOfStock;
+                };
+ };
+type ProductVariant = 
+ record {
+   attributes: vec ProductAttribute;
+   deliverable: opt Deliverable;
+   id: VariantId;
+   imageUrls: vec text;
+   name: text;
+   price: PriceContext;
+   pricing: opt Pricing;
+   productId: ProductId;
+   sku: SKU;
+   status: ProductStatus;
+ };
+type ProductUpdatedVariant = 
+ record {
+   attributes: vec ProductAttribute;
+   imageUrls: vec text;
+   name: text;
+   priceCatalog: vec Money;
+   release: opt MarketplaceRelease;
+   sku: SKU;
+   status: ProductStatus;
+   variantId: VariantId;
+ };
+type ProductUpdatedEventListener = func (event: ProductUpdatedEvent) -> ();
+type ProductUpdatedEventData = 
+ record {
+   category: opt text;
+   description: text;
+   productId: ProductId;
+   productType: ProductType;
+   tags: vec text;
+   title: text;
+   variants: vec ProductUpdatedVariant;
+ };
+type ProductUpdatedEvent = record {data: ProductUpdatedEventData;};
+type ProductType = 
+ variant {
+   Digital;
+   Physical;
+   Service;
+ };
+type ProductStatus = 
+ variant {
+   Active;
+   Archived;
+   Draft;
+   Inactive;
+ };
+type ProductSource = 
+ variant {
+   all;
+   category: text;
+   picked: vec ProductId;
+   tag: text;
+ };
+type ProductSort = 
+ variant {
+   manual;
+   newest;
+   priceHighToLow;
+   priceLowToHigh;
+ };
+type ProductId = nat32;
+type ProductDeletedEventListener = func (event: ProductDeletedEvent) -> ();
+type ProductDeletedEvent = record {data: record {productId: ProductId;};};
+type ProductAttributeConfig = 
+ vec record {
+       text;
+       vec text;
+     };
+type ProductAttribute = 
+ record {
+   key: text;
+   value: text;
+ };
+type Product = 
+ record {
+   category: opt text;
+   createdAt: Time;
+   description: text;
+   id: ProductId;
+   productType: ProductType;
+   status: ProductStatus;
+   tags: vec text;
+   title: text;
+   variants: vec ProductVariant;
+ };
+type Pricing = 
+ variant {
+   fixed;
+   minimum;
+ };
+type PriceContext = record {catalog: vec Money;};
+type PresentationView = 
+ record {
+   artistPreset: opt ArtistPreset;
+   artistProfile: opt ArtistProfileView;
+   mediaCanisterId: opt principal;
+   presentation: opt Presentation;
+ };
+type Presentation = 
+ variant {
+   artist;
+   storefront;
+ };
+type PermissionId = text;
+type PermissionDef = 
+ record {
+   id: PermissionId;
+   includes: vec PermissionId;
+ };
+type PaymentStatus = 
+ variant {
+   authorized;
+   captured;
+   failed;
+   refunded;
+   unpaid;
+ };
+type PaymentRef = 
+ record {
+   amount: Money;
+   paidAt: opt Time;
+   provider: PaymentProvider;
+   reference: text;
+   status: PaymentStatus;
+ };
+type PaymentProvider = 
+ variant {
+   ICRC1;
+   Manual;
+   Stripe;
+ };
+type Page_8 = 
+ record {
+   items: vec InventoryItem;
+   next: opt VariantId;
+ };
+type Page_7 = 
+ record {
+   items: vec CatalogProduct;
+   next: opt ProductId;
+ };
+type Page_6 = 
+ record {
+   items: vec Member;
+   next: opt principal;
+ };
+type Page_5 = 
+ record {
+   items: vec OrderEvent;
+   next: opt nat;
+ };
+type Page_4 = 
+ record {
+   items: vec Order;
+   next: opt OrderId;
+ };
+type Page_3 = 
+ record {
+   items: vec PublicReleaseSummary;
+   next: opt ReleaseId;
+ };
+type Page_2 = 
+ record {
+   items: vec Release;
+   next: opt ReleaseId;
+ };
+type Page_1 = 
+ record {
+   items: vec RoleView;
+   next: opt RoleId;
+ };
+type Page = 
+ record {
+   items: vec Track;
+   next: opt TrackId;
+ };
+type OrderUpdatedEventListener = func (event: OrderUpdatedEvent) -> ();
+type OrderUpdatedEventData = 
+ record {
+   buyer: principal;
+   createdAt: Time;
+   items: vec LineItemSnapshot;
+   logEvent: opt OrderLogEvent;
+   orderId: OrderId;
+   status: OrderStatus;
+   totals: Totals;
+ };
+type OrderUpdatedEvent = record {data: OrderUpdatedEventData;};
+type OrderSummary = 
+ record {
+   createdAt: int;
+   id: nat32;
+   itemCount: nat32;
+   status: OrderStatus;
+   total: Money__1;
+ };
+type OrderStatus = 
+ variant {
+   awaitingPayment;
+   canceled;
+   created;
+   fulfilled;
+   paid;
+   partiallyFulfilled;
+   processing;
+   refunded;
+ };
+type OrderRefund = 
+ record {
+   amount: nat;
+   blockIndex: nat;
+   token: text;
+ };
+type OrderLogEvent = 
+ record {
+   at: int;
+   seq: nat;
+ };
+type OrderId = nat32;
+type OrderEventKind = 
+ variant {
+   awaitingPayment: record {provider: variant {
+                                        ICRC1;
+                                        Manual;
+                                        Stripe;
+                                      };};
+   canceled: record {reason: opt CancelReason;};
+   created;
+   fulfilled: record {method: opt DeliveryMethod;};
+   lineDelivered: record {
+                    lineIndex: nat;
+                    method: DeliveryMethod;
+                  };
+   paid: record {provider: variant {
+                             ICRC1;
+                             Manual;
+                             Stripe;
+                           };};
+   partiallyFulfilled;
+   refunded;
+ };
+type OrderEvent = 
+ record {
+   at: int;
+   by: Initiator;
+   kind: OrderEventKind;
+   orderId: OrderId;
+   seq: nat;
+ };
+type Order = 
+ record {
+   buyer: principal;
+   canceledAt: opt Time;
+   createdAt: Time;
+   expiresAt: Time;
+   fulfillment: opt Fulfillment;
+   id: OrderId;
+   items: vec LineItemSnapshot;
+   notes: opt text;
+   payment: opt PaymentRef;
+   shippingAddress: opt ShippingAddress;
+   status: OrderStatus;
+   totals: Totals;
+   updatedAt: Time;
+ };
+type MyPermissions = 
+ record {
+   isSuperuser: bool;
+   permissions: vec PermissionId;
+   roleIds: vec RoleId;
+ };
+type MusicStatus = 
+ variant {
+   Active;
+   Archived;
+ };
+type MusicError = 
+ variant {
+   InUse: text;
+   InvalidInput: text;
+   LimitReached: text;
+   NotFound: text;
+   ReleaseSold: text;
+   Unauthorized: text;
+ };
+type Money__1 = 
+ record {
+   amount: nat64;
+   currency:
+    record {
+      class: variant {
+               Cryptocurrency;
+               FiatCurrency;
+             };
+      symbol: text;
+    };
+   metadata: record {decimals: nat32;};
+ };
+type Money = 
+ record {
+   amount: nat64;
+   currency: Currency;
+   metadata: record {decimals: nat32;};
+ };
+type Mode = 
+ variant {
+   live;
+   test;
+ };
+type Member = 
+ record {
+   "principal": principal;
+   roleIds: vec RoleId;
+ };
+type MarketplaceRelease = 
+ record {
+   artist: text;
+   genre: opt text;
+   kind: ReleaseKind;
+ };
+type LogLevel = 
+ variant {
+   Error;
+   Info;
+   Warning;
+ };
+type Log = 
+ record {
+   fields: vec Field;
+   level: LogLevel;
+   message: text;
+   timestamp: Time;
+ };
+type Link = 
+ variant {
+   category: text;
+   external: text;
+   product: ProductId;
+ };
+type LineItemSnapshot = 
+ record {
+   listedPrices: vec Money;
+   options: vec record {
+                  text;
+                  text;
+                };
+   productId: ProductId;
+   quantity: nat32;
+   sku: opt text;
+   title: text;
+   unitPrice: Money;
+   variantId: VariantId;
+ };
+type LayoutInput = 
+ record {
+   home: vec Section;
+   theme: opt StorefrontTheme;
+ };
+type InventoryItem = 
+ record {
+   available: nat32;
+   lowStockThreshold: nat32;
+   product: record {
+              id: ProductId;
+              title: text;
+            };
+   "reserved": nat32;
+   status: variant {
+             InStock;
+             LowStock;
+             OutOfStock;
+           };
+   stock: nat32;
+   "variant": record {
+                id: VariantId;
+                name: text;
+                sku: SKU;
+              };
+ };
+type Initiator = 
+ variant {
+   automatic;
+   buyer;
+   merchant;
+ };
+type ImageSource = 
+ variant {
+   asset: AssetKey;
+   shopBanner;
+   shopLogo;
+ };
+type HttpRequestResult = 
+ record {
+   body: blob;
+   headers: vec HttpHeader;
+   status: nat;
+ };
+type HttpHeader = 
+ record {
+   name: text;
+   value: text;
+ };
+type Fulfillment = 
+ record {
+   carrier: opt text;
+   date: Time;
+   trackingNumber: opt text;
+ };
+type Float = float64;
+type Field = 
+ record {
+   text;
+   Value;
+ };
+type FetchExchangeRateResponse = 
+ variant {
+   err: FetchError;
+   ok: ExchangeRateCacheEntry;
+ };
+type FetchError = 
+ variant {
+   InsufficientCycles;
+   XRCError: ExchangeRateError;
+ };
+type FeaturedReleaseChoice = 
+ variant {
+   latest;
+   picked: ReleaseId;
+ };
+type ExchangeRateMetadata = 
+ record {
+   base_asset_num_queried_sources: nat64;
+   base_asset_num_received_rates: nat64;
+   decimals: nat32;
+   forex_timestamp: opt nat64;
+   quote_asset_num_queried_sources: nat64;
+   quote_asset_num_received_rates: nat64;
+   standard_deviation: nat64;
+ };
+type ExchangeRateError = 
+ variant {
+   AnonymousPrincipalNotAllowed;
+   CryptoBaseAssetNotFound;
+   CryptoQuoteAssetNotFound;
+   FailedToAcceptCycles;
+   ForexAssetsNotFound;
+   ForexBaseAssetNotFound;
+   ForexInvalidTimestamp;
+   ForexQuoteAssetNotFound;
+   InconsistentRatesReceived;
+   NotEnoughCycles;
+   Other: record {
+            code: nat32;
+            description: text;
+          };
+   Pending;
+   RateLimited;
+   StablecoinRateNotFound;
+   StablecoinRateTooFewRates;
+   StablecoinRateZeroRate;
+ };
+type ExchangeRateCacheEntry = 
+ record {
+   descaledRate: Float;
+   lastUpdated: Time;
+   xrcResponse: ExchangeRate;
+ };
+type ExchangeRate = 
+ record {
+   base_asset: Asset;
+   metadata: ExchangeRateMetadata;
+   quote_asset: Asset;
+   rate: nat64;
+   timestamp: nat64;
+ };
+type EventKind = 
+ variant {
+   OrderUpdated;
+   ProductDeleted;
+   ProductUpdated;
+   ShopDetailsUpdated;
+ };
+type Error = 
+ variant {
+   InputError: text;
+   NotFound: text;
+   Unauthorized: text;
+ };
+type EntitlementError = 
+ variant {
+   InvalidInput: text;
+   InvalidLineIndex: text;
+   MediaNotConfigured: text;
+   NotDigitalProduct: text;
+   NotFound: text;
+   OrderNotPaid: text;
+   Unauthorized: text;
+ };
+type ElementType = 
+ record {
+   kind: text;
+   version: nat;
+ };
+type ElementNode = 
+ record {
+   element: Element;
+   id: nat;
+ };
+type Element = 
+ variant {
+   button:
+    record {
+      align: Align;
+      link: Link;
+      style: variant {
+               primary;
+               secondary;
+             };
+      "text": text;
+    };
+   divider;
+   faq: record {entries: vec record {
+                               answer: text;
+                               question: text;
+                             };};
+   featuredRelease:
+    record {
+      release: FeaturedReleaseChoice;
+      showBuy: bool;
+      tracks: TrackCount;
+    };
+   heading:
+    record {
+      align: Align;
+      level: variant {
+               h1;
+               h2;
+               h3;
+             };
+      "text": TextSource;
+    };
+   image:
+    record {
+      alt: text;
+      aspect: variant {
+                banner;
+                original;
+                square;
+                tall;
+                wide;
+              };
+      link: opt Link;
+      source: ImageSource;
+    };
+   products:
+    record {
+      limit: nat;
+      perRow: nat;
+      showCategoryFilter: bool;
+      sort: ProductSort;
+      source: ProductSource;
+      title: opt text;
+    };
+   releases:
+    record {
+      limit: nat;
+      perRow: nat;
+      showArtist: bool;
+      sort: ReleaseSort;
+      source: ReleaseSource;
+      style: ReleaseStyle;
+      title: opt text;
+    };
+   shopInfo: record {
+               showDescription: bool;
+               showLocation: bool;
+             };
+   spacer: record {size: variant {
+                           large;
+                           medium;
+                           small;
+                         };};
+   "text": record {
+             align: Align;
+             content: vec RichTextNode;
+           };
+ };
+type EditorState = 
+ record {
+   draft: opt DraftView;
+   hasUnpublishedChanges: bool;
+   publishedAt: opt Time;
+   revision: nat;
+ };
+type DraftView = 
+ record {
+   home: vec opt SectionView;
+   theme: opt StorefrontTheme;
+   updatedAt: Time;
+   updatedBy: principal;
+ };
+type DigitalDeliveryResponse = 
+ record {
+   expiresAt: nat64;
+   mediaKey: text;
+   token: text;
+ };
+type Destination = 
+ record {
+   owner: principal;
+   subaccount: opt blob;
+ };
+type DeliveryMethod = 
+ variant {
+   digital;
+   inPerson;
+   shipped: record {
+              carrier: opt text;
+              trackingNumber: opt text;
+            };
+ };
+type Deliverable = variant {release: ReleaseId;};
+type Dashboard = 
+ record {
+   generatedAt: int;
+   orders:
+    record {
+      awaitingPayment: nat32;
+      oldestToFulfillAt: opt int;
+      toFulfill: nat32;
+    };
+   products:
+    record {
+      active: nat32;
+      archived: nat32;
+      draft: nat32;
+      inactive: nat32;
+      withoutImages: nat32;
+    };
+   recentOrders: vec OrderSummary;
+   sales: record {
+            last24h: Sales;
+            last30d: Sales;
+            last7d: Sales;
+          };
+   stock: record {
+            alerts: vec StockAlert;
+            lowStock: nat32;
+            outOfStock: nat32;
+          };
+   topProducts: vec TopProduct;
+ };
+type Currency = 
+ record {
+   class: variant {
+            Cryptocurrency;
+            FiatCurrency;
+          };
+   symbol: text;
+ };
+type Credit = 
+ record {
+   text;
+   text;
+ };
+type CreateProductInput = 
+ record {
+   category: opt text;
+   description: text;
+   productType: ProductType;
+   tags: opt vec text;
+   title: text;
+   variants: vec VariantInput;
+ };
+type ContrastFailure = 
+ record {
+   minimum: float64;
+   pairing: text;
+   ratio: float64;
+ };
+type ColumnView = 
+ record {
+   elements: vec opt ElementNode;
+   span: nat;
+ };
+type Column = 
+ record {
+   elements: vec ElementNode;
+   span: nat;
+ };
+type CatalogVariant = 
+ record {
+   attributes: vec ProductAttribute;
+   deliverable: opt Deliverable;
+   id: VariantId;
+   imageUrls: vec text;
+   name: text;
+   price: PriceContext;
+   pricing: opt Pricing;
+   productId: ProductId;
+   release: opt MarketplaceRelease;
+   sku: SKU;
+   status: ProductStatus;
+ };
+type CatalogProduct = 
+ record {
+   category: opt text;
+   createdAt: Time;
+   description: text;
+   id: ProductId;
+   productType: ProductType;
+   status: ProductStatus;
+   tags: vec text;
+   title: text;
+   variants: vec CatalogVariant;
+ };
+type CancelReason = 
+ variant {
+   buyer;
+   expired;
+   merchant;
+   paymentMismatch;
+ };
+type AudioFormat = 
+ variant {
+   aac_256;
+   aiff;
+   alac;
+   flac;
+   mp3_320;
+   wav;
+ };
+type AudioFile = 
+ record {
+   bytes: nat;
+   format: AudioFormat;
+   mediaKey: text;
+ };
+type AssetKey = text;
+type AssetClass = 
+ variant {
+   Cryptocurrency;
+   FiatCurrency;
+ };
+type Asset = 
+ record {
+   class: AssetClass;
+   symbol: text;
+ };
+type ArtistProfileView = 
+ record {
+   bio: text;
+   links: vec ArtistLinkView;
+   photoKey: opt AssetKey;
+ };
+type ArtistProfile = 
+ record {
+   bio: text;
+   links: vec ArtistLink;
+   photoKey: opt AssetKey;
+ };
+type ArtistPreset = 
+ variant {
+   gatefold;
+   linerNotes;
+   setlist;
+ };
+type ArtistLinkView = 
+ record {
+   kind: opt ArtistLinkKind;
+   url: text;
+ };
+type ArtistLinkKind = 
+ variant {
+   other;
+   social;
+   store;
+   streaming;
+   website;
+ };
+type ArtistLink = 
+ record {
+   kind: ArtistLinkKind;
+   url: text;
+ };
+type Align = 
+ variant {
+   center;
+   end;
+   start;
+ };
+type Alert = 
+ variant {
+   LowStock:
+    record {
+      currentStock: nat32;
+      product: record {
+                 id: ProductId;
+                 name: text;
+               };
+    };
+   MissingImage: record {product: record {
+                                    id: ProductId;
+                                    name: text;
+                                  };};
+ };
+type Address = 
+ record {
+   city: text;
+   country: text;
+   line1: text;
+   line2: opt text;
+   postalCode: text;
+   region: text;
+ };
+type Account__1 = 
+ record {
+   owner: principal;
+   subaccount: opt blob;
+ };
+type Account = 
+ record {
+   identifier: text;
+   name: opt text;
+   owner: principal;
+   subaccount: opt blob;
+ };
+service : (initArgs: record {
+                       description: text;
+                       name: text;
+                     }) -> Shop
