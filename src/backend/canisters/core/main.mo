@@ -30,6 +30,7 @@ import ShopInterface "../../interfaces/shop";
 import VaultInterface "../../interfaces/vault";
 import ShopProvisioning "./provisioning/shop";
 
+import AddressesAPI "./api/addresses";
 import AdminAPI "./api/admin";
 import ShopAPI "./api/shop";
 import OrderAPI "./api/orders";
@@ -61,6 +62,7 @@ import Handover "./mixins/Handover";
 import Releases "./mixins/Releases";
 import ShopCallFees "./mixins/ShopCallFees";
 import Marketplace "./mixins/Marketplace";
+import Addresses "./mixins/Addresses";
 
 shared ({ caller = initializer }) persistent actor class Core() = self {
     transient let logState = Logger.new(Principal.fromActor(self), ?true);
@@ -104,6 +106,9 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
 
     // Shops each user created or added via addManagedShop
     let managedShopsByUser : Map.Map<Principal, [Principal]>;
+
+    // Each user's saved shipping addresses, private to that user (BRE-209)
+    let savedAddresses : AddressesAPI.AddressesByUser;
 
     let exchangeRateCache : ExchangeRates.Cache;
     transient let exchangeRates = ExchangeRates.newState(exchangeRateCache);
@@ -481,6 +486,7 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         case null null;
     };
     include Marketplace(coreId, frontendCanisterId);
+    include Addresses(savedAddresses, userRegistry);
 
     // Whether the daily cycles sample is running, so a slow run and the next don't overlap.
     transient var samplingShopCycles = false;
