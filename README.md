@@ -23,17 +23,21 @@ The wasms land in `.icp/cache/artifacts/<name>`.
 
 ## Verify a deployed canister
 
-Releases are built from this tree with `icp build`, as above. To check that a canister runs this code, compare its module hash with your build:
+Releases are built from this tree with `icp build` on Linux. To check that a canister runs this code, compare its module hash with a build of the commit it was released from:
 
 ```bash
 icp canister status <canister-id> -e ic --public
 ```
 
+Every commit's **Build** workflow run lists the hash of each wasm under **Module hashes**, both in the run summary and in the step's log. That's the easiest build to compare against. A deployed canister can be a commit or two behind the latest one, so look back through recent runs.
+
+To build it yourself, check out that commit and run the build above, then:
+
 ```bash
 shasum -a 256 .icp/cache/artifacts/shop
 ```
 
-The mirror's commit message names the commit of the private repo it was exported from.
+Build on Linux (x86-64), for example in Docker. The Motoko compiler's macOS and Linux binaries embed different build IDs in the wasm's `moc:version` metadata, so a macOS build never matches, even from the same source and compiler version.
 
 ## Contributing
 
