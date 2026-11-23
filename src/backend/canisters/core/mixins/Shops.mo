@@ -15,6 +15,7 @@ import ShopCanistersAPI "../api/shop_canisters";
 import ShopEvents "../lib/ShopEvents";
 import Siblings "../lib/Siblings";
 import Types "../types";
+import AlertsAPI "../api/alerts";
 import HistoryAPI "../api/history";
 
 /// The shop registry: registering and listing shops, the shops a user manages, and the detail and
@@ -27,6 +28,7 @@ mixin (
     callFees : ShopCallFeesAPI.State,
     userRegistry : Map.Map<Principal, Types.UserRegistryItem>,
     history : HistoryAPI.State,
+    alerts : AlertsAPI.State,
     coreId : Principal,
     productPages : ShopAPI.SyncShopProductsHooks,
     // Drops how far core read an unregistered shop's order log (BRE-203).
@@ -72,6 +74,7 @@ mixin (
         );
         if (res == #ok) {
             ignore HistoryAPI.record(history, caller, ?req.canisterId, #shopRegistered({ owner = caller }));
+            ignore AlertsAPI.record(alerts, #shopRegistered({ shop = req.canisterId; owner = caller }));
             ignore await ShopCanistersAPI.linkRegisteredShopVault(
                 shopCanistersState,
                 req.canisterId,

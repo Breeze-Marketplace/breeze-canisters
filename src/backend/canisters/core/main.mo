@@ -44,12 +44,14 @@ import ShopCallFeesAPI "./api/shop_call_fees";
 import UpgradesAPI "./api/upgrades";
 import HandoverAPI "./api/handover";
 import ReleasesAPI "./api/releases";
+import AlertsAPI "./api/alerts";
 import HistoryAPI "./api/history";
 import ShopEvents "./lib/ShopEvents";
 import Siblings "./lib/Siblings";
 import Types "./types";
 
 import Users "./mixins/Users";
+import Alerts "./mixins/Alerts";
 import Admins "./mixins/Admins";
 import History "./mixins/History";
 import ShopCreation "./mixins/ShopCreation";
@@ -120,6 +122,9 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
 
     // What staff, merchants and core did to the marketplace, and who did it (BRE-153).
     let marketplaceHistory : HistoryAPI.State;
+
+    // Events staff are alerted to, and each staff member's alert settings (BRE-210).
+    let platformAlerts : AlertsAPI.State;
 
     let orders : Map.Map<OrderAPI.OrderKey, OrderAPI.Order>;
 
@@ -418,6 +423,7 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         ShopAPI.putShopRegistryAndIndexes(shopApi, item, quote.normalizedName);
         ShopAPI.addToManagedShops(shopApi, owner, canisterId);
         ignore HistoryAPI.record(marketplaceHistory, owner, ?canisterId, #shopCreated({ owner; quoteId = quote.id }));
+        ignore AlertsAPI.record(platformAlerts, #shopCreated({ shop = canisterId; owner }));
         ShopCanistersAPI.recordInstall(shopCanistersState, canisterId, { version; sha256 = null });
         ShopCanistersAPI.linkVault(shopCanistersState, canisterId, mediaCanisterId);
         logger.info("Registered shop " # Principal.toText(canisterId) # " (" # WasmVersion.toText(version) # ") with vault " # Principal.toText(mediaCanisterId) # " for quote " # debug_show (quote.id));
@@ -460,7 +466,8 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         return #ok(canisterId);
     };
 
-    include Users(userRegistry, registrationBudget, maxUsers);
+    include Users(userRegistry, registrationBudget, maxUsers, func(user : Principal) = ignore AlertsAPI.record(platformAlerts, #userRegistered({ user })));
+    include Alerts(adminApi, platformAlerts);
     include Admins(adminApi);
     include TeamApi(
         adminApi.access,
@@ -470,8 +477,8 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         },
     );
     include History(adminApi, marketplaceHistory);
-    include ShopCreation(shopCreationApi, adminApi, shopCreationState, exchangeRates, userRegistry, createShopForQuote, marketplaceHistory);
-    include Shops(shopApi, adminApi, shopCanistersState, handoverState, shopCallFeesState, userRegistry, marketplaceHistory, coreId, productPages, func(shopId : Principal) = OrderAPI.forgetShop(orderApi, shopId));
+    include ShopCreation(shopCreationApi, adminApi, shopCreationState, exchangeRates, userRegistry, createShopForQuote, marketplaceHistory, platformAlerts);
+    include Shops(shopApi, adminApi, shopCanistersState, handoverState, shopCallFeesState, userRegistry, marketplaceHistory, platformAlerts, coreId, productPages, func(shopId : Principal) = OrderAPI.forgetShop(orderApi, shopId));
     include Orders(orderApi, adminApi, shopRegistry, shopCanistersState, handoverState, shopCallFeesState, coreId, subscriptionChecks);
     include ShopCallFees(shopCallFeesState, marketplaceHistory);
     include Balances(adminApi, coreId, shopCreationState, emptyQuoteDeposits);

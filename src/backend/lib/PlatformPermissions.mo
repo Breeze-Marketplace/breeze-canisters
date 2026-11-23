@@ -20,6 +20,7 @@ module PlatformPermissions {
     public let moderationCategorize = "Moderation.Categorize";
     public let policiesPublish = "Policies.Publish";
     public let historyView = "History.View";
+    public let alertsView = "Alerts.View";
 
     public let catalog : [Permissions.PermissionDef] = [
         { id = shopsView; includes = [] },
@@ -36,6 +37,7 @@ module PlatformPermissions {
         { id = moderationCategorize; includes = [moderationView] },
         { id = policiesPublish; includes = [] },
         { id = historyView; includes = [] },
+        { id = alertsView; includes = [] },
         { id = Permissions.TEAM_VIEW; includes = [] },
         {
             id = Permissions.TEAM_ASSIGN_ROLES;

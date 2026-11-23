@@ -10,10 +10,17 @@ import Set "mo:map/Set";
 import PlatformPermissions "../../../lib/PlatformPermissions";
 import Migration "../migrations/20261116_044224_Permissions";
 // Every later migration that adds a permission to the Admin preset, in order.
-import Later "../migrations/20261116_085855_MarketplaceHistory";
+import History "../migrations/20261116_085855_MarketplaceHistory";
+import Alerts "../migrations/20261123_055713_PlatformAlerts";
 
 let admin = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
 let otherAdmin = Principal.fromText("rdmx6-jaaaa-aaaaa-aaadq-cai");
+
+/// The Admin preset after every later migration that adds a permission to it.
+func migrateAll() : Migration.Team {
+    let team = History.migration({ team = migrate([]) }).team;
+    Alerts.migration({ team }).team;
+};
 
 func migrate(admins : [Principal]) : Migration.Team {
     let set = Set.new<Principal>();
@@ -37,7 +44,7 @@ suite(
         test(
             "the Admin role, with the permissions later migrations add, holds the whole catalog",
             func() {
-                let team = Later.migration({ team = migrate([]) }).team;
+                let team = migrateAll();
                 let ?adminRole = team.roles.get(1) else return assert false;
                 expect.text(adminRole.name).equal("Admin");
                 let catalogIds = PlatformPermissions.catalog.map(func d = d.id);
@@ -51,7 +58,7 @@ suite(
         test(
             "presets use only catalog permissions and new roles start after them",
             func() {
-                let team = Later.migration({ team = migrate([]) }).team;
+                let team = migrateAll();
                 let catalogIds = PlatformPermissions.catalog.map(func d = d.id);
                 for ((_, role) in team.roles.entries()) {
                     for (p in role.permissions.values()) {
