@@ -122,8 +122,8 @@ module {
 
     public let MAX_SUBSCRIBERS_PER_EVENT = Subscriptions.MAX_SUBSCRIBERS_PER_EVENT;
 
-    /// Each notification carries `ShopCallFees.EVENT_CYCLES`: core keeps them from a shop it doesn't
-    /// host and hands them back from a hosted one (BRE-116).
+    /// Each notification carries `ShopCallFees.EVENT_CYCLES`: core keeps them once its fees are
+    /// enforced, and hands them back until then (BRE-116).
     ///
     /// Notifications are bounded-wait calls: a listener that never replies can't stop the shop from
     /// being stopped (and so upgraded) for longer than this (BRE-67).

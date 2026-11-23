@@ -1,16 +1,13 @@
 import Iter "mo:core/Iter";
 import Time "mo:core/Time";
-import Error "mo:core/Error";
 import { type Result } "mo:core/Result";
 import Map "mo:map/Map";
 
 import AdminAPI "../api/admin";
 import PlatformPermissions "../../../lib/PlatformPermissions";
 import OrderAPI "../api/orders";
-import HandoverAPI "../api/handover";
 import ShopAPI "../api/shop";
 import ShopCallFeesAPI "../api/shop_call_fees";
-import ShopCanistersAPI "../api/shop_canisters";
 import ShopEvents "../lib/ShopEvents";
 
 /// The cross-shop order index that shops keep current through `trackOrder`.
@@ -18,25 +15,16 @@ mixin (
     orderApi : OrderAPI.API,
     adminApi : AdminAPI.API,
     shopRegistry : Map.Map<Principal, ShopAPI.ShopRegistryItem>,
-    shopCanistersState : ShopCanistersAPI.State,
-    handoverState : HandoverAPI.State,
     callFees : ShopCallFeesAPI.State,
     coreId : Principal,
     subscriptionChecks : OrderAPI.SubscriptionCheckHooks,
 ) {
     /// Upserts a marketplace-wide order index entry. Called by a registered shop canister
-    /// when an order is created or its status changes. A shop core doesn't host must attach
+    /// when an order is created or its status changes. Every caller must attach
     /// `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116). A notification that shows core missed
     /// some of the shop's order log starts a short catch-up (BRE-203; rate-limited per shop).
     public shared ({ caller }) func trackOrder(req : OrderAPI.TrackOrderRequest) : async () {
-        if (orderApi.shopApi.isRegisteredShop(caller)) {
-            switch (ShopCallFeesAPI.charge<system>(callFees, ShopCallFeesAPI.isHosted(shopCanistersState, handoverState, caller))) {
-                case (#ok) {};
-                case (#err(#CyclesRequired(n))) {
-                    throw Error.reject("Events from this shop must carry " # debug_show n # " cycles");
-                };
-            };
-        };
+        await* ShopCallFeesAPI.chargeOrReject<system>(callFees);
         OrderAPI.trackOrder(orderApi, caller, req);
         if (OrderAPI.noteNotification(orderApi, caller, req.data.logEvent, Time.now())) {
             // Not awaited: the shop doesn't wait on core's catch-up.

@@ -1,5 +1,4 @@
 import Principal "mo:core/Principal";
-import Error "mo:core/Error";
 import { type Result } "mo:core/Result";
 import Map "mo:map/Map";
 
@@ -34,21 +33,6 @@ mixin (
     // Drops how far core read an unregistered shop's order log (BRE-203).
     forgetShopOrders : (shopId : Principal) -> (),
 ) {
-    /// Takes the cycles an event from `shopId` must carry (BRE-116), or throws so the shop logs
-    /// that its event wasn't taken. Unregistered callers are ignored by the sync, so they aren't charged.
-    func chargeShopEvent<system>(shopId : Principal) : async* () {
-        if (not ShopAPI.isRegisteredShop(shopApi, shopId)) {
-            return;
-        };
-        let hosted = ShopCallFeesAPI.isHosted(shopCanistersState, handoverState, shopId);
-        switch (ShopCallFeesAPI.charge<system>(callFees, hosted)) {
-            case (#ok) {};
-            case (#err(#CyclesRequired(n))) {
-                throw Error.reject("Events from this shop must carry " # debug_show n # " cycles");
-            };
-        };
-    };
-
     /// Registers an existing Shop canister in the marketplace. Used when a user creates a shop via other means (e.g. CLI) and wants to list it in the marketplace, or to re-register after unregistering. The caller must be a registered user and a controller of the canister, which core reads through `canister_status`: core must be a controller or status viewer of it (`icp canister settings update <shop> --add-status-viewer <core>`), and the caller's Breeze sign-in principal must be one of the controllers. The shop's vault is recorded too when the caller controls it and core can read its controllers; otherwise an admin links it with `linkShopVault`.
     public shared ({ caller }) func registerShop(req : ShopAPI.RegisterShopRequest) : async ShopAPI.RegisterShopResponse {
         let getControllers = func(canisterId : Principal) : async [Principal] {
@@ -191,8 +175,9 @@ mixin (
     };
 
     /// Called by a Shop canister after updating its public details so the marketplace home list stays in sync.
+    /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
     public shared ({ caller }) func syncShopDetails(event : ShopInterface.ShopDetailsUpdatedEvent) : async () {
-        await* chargeShopEvent<system>(caller);
+        await* ShopCallFeesAPI.chargeOrReject<system>(callFees);
         ShopAPI.syncShopDetails(shopApi, caller, event);
     };
 
@@ -210,18 +195,20 @@ mixin (
     };
 
     /// Called by a Shop canister after updating a product so the marketplace index stays in sync.
+    /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
     public shared ({ caller }) func syncUpdatedProduct(
         event : ShopInterface.ProductUpdatedEvent
     ) : async () {
-        await* chargeShopEvent<system>(caller);
+        await* ShopCallFeesAPI.chargeOrReject<system>(callFees);
         await ShopAPI.syncUpdatedProduct(shopApi, caller, event);
     };
 
     /// Called by a Shop canister after deleting a product so the marketplace index stays in sync.
+    /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
     public shared ({ caller }) func syncDeletedProduct(
         event : ShopInterface.ProductDeletedEvent
     ) : async () {
-        await* chargeShopEvent<system>(caller);
+        await* ShopCallFeesAPI.chargeOrReject<system>(callFees);
         await ShopAPI.syncDeletedProduct(shopApi, caller, event);
     };
 

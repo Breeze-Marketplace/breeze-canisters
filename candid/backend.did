@@ -1152,7 +1152,7 @@ type Core =
    getMyPermissions: () -> (MyPermissions) query;
    /// The permissions roles can be made of, with what each includes. Public: it's the same for every caller.
    getPermissionCatalog: () -> (vec PermissionDef) query;
-   /// Whether the fees are on, and the cycles each event from a shop core doesn't host must carry.
+   /// Whether the fees are on, and the cycles each event from a shop must carry.
    getShopCallFees: () -> (record {
                              enforced: bool;
                              eventCycles: nat;
@@ -1311,8 +1311,8 @@ type Core =
    /// `id` is null. Refuses anonymous callers.
    setMyDefaultAddress: (id: opt AddressId) -> (Result_11);
    /// Turns the fees on or off. Controllers only. Turn them on once the shop version that attaches
-   /// cycles is published and self-managed merchants have had time to install it: until then core
-   /// refuses their events, so their products and orders stop syncing.
+   /// cycles is published, every hosted shop runs it and self-managed merchants have had time to install it:
+   /// core refuses events from older shops, so their products and orders stop syncing.
    setShopCallFeesEnforced: (enforced: bool) -> (Result_9);
    /// Sets the hosted shop price in US cents. 0 makes shop creation free. Controllers only.
    setShopCreationPrice: (usdCents: nat) -> (Result_9);
@@ -1336,8 +1336,10 @@ type Core =
    /// reserved: `createShopQuote` reserves it.
    suggestShopSlug: (name: text) -> (text) query;
    /// Called by a Shop canister after deleting a product so the marketplace index stays in sync.
+   /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
    syncDeletedProduct: (event: ProductDeletedEvent) -> ();
    /// Called by a Shop canister after updating its public details so the marketplace home list stays in sync.
+   /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
    syncShopDetails: (event: ShopDetailsUpdatedEvent) -> ();
    /// Replaces a shop's slice of the marketplace product index with what the shop has now: core
    /// reads the shop's products a page at a time, sends each page to product_index, then removes the
@@ -1345,9 +1347,10 @@ type Core =
    /// each page (up to `MAX_SYNC_PAGES`), so a shop calling it on itself could repeat it for free (BRE-118).
    syncShopProducts: (shopId: principal) -> (Result_5);
    /// Called by a Shop canister after updating a product so the marketplace index stays in sync.
+   /// Every caller must attach `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116).
    syncUpdatedProduct: (event: ProductUpdatedEvent) -> ();
    /// Upserts a marketplace-wide order index entry. Called by a registered shop canister
-   /// when an order is created or its status changes. A shop core doesn't host must attach
+   /// when an order is created or its status changes. Every caller must attach
    /// `ShopCallFees.EVENT_CYCLES` once enforced (BRE-116). A notification that shows core missed
    /// some of the shop's order log starts a short catch-up (BRE-203; rate-limited per shop).
    trackOrder: (req: TrackOrderRequest) -> ();

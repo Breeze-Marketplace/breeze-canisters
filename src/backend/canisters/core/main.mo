@@ -479,7 +479,7 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
     include History(adminApi, marketplaceHistory);
     include ShopCreation(shopCreationApi, adminApi, shopCreationState, exchangeRates, userRegistry, createShopForQuote, marketplaceHistory, platformAlerts);
     include Shops(shopApi, adminApi, shopCanistersState, handoverState, shopCallFeesState, userRegistry, marketplaceHistory, platformAlerts, coreId, productPages, func(shopId : Principal) = OrderAPI.forgetShop(orderApi, shopId));
-    include Orders(orderApi, adminApi, shopRegistry, shopCanistersState, handoverState, shopCallFeesState, coreId, subscriptionChecks);
+    include Orders(orderApi, adminApi, shopRegistry, shopCallFeesState, coreId, subscriptionChecks);
     include ShopCallFees(shopCallFeesState, marketplaceHistory);
     include Balances(adminApi, coreId, shopCreationState, emptyQuoteDeposits);
     include Upgrades(adminApi, shopCanistersState, shopRegistry, upgradesState, upgradesBusy, handoverState, marketplaceHistory, logger);
