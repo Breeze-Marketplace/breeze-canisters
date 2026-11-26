@@ -31,6 +31,9 @@ type Valut =
        sha256: opt blob;
        total_length: nat;
      }) query;
+   /// This canister's cycle balance. No caller check: the balance is not private (core's
+   /// `getShopCycles` shows it), and the shop calls this to decide whether to top the vault up.
+   getCyclesBalance: () -> (nat) query;
    /// Private keys: writers only.
    get_chunk: (arg:
     record {

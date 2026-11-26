@@ -6,5 +6,6 @@ module {
         authorize : (Principal) -> async ();
         setShopCanisterId : (Principal) -> async ();
         setHmacSecretKey : (Blob) -> async ();
+        getCyclesBalance : shared query () -> async Nat;
     };
 };

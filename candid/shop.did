@@ -162,6 +162,80 @@ type Totals =
    tax: Money;
    total: Money;
  };
+type TopUpTrigger = 
+ variant {
+   manual: principal;
+   timer;
+ };
+type TopUpSkipReason = 
+ variant {
+   capReached;
+   insufficientFunds: record {
+                        balance: nat;
+                        needed: nat;
+                      };
+   notifyPending;
+ };
+type TopUpSettings = 
+ record {
+   maxE8sPer30Days: nat;
+   thresholdCycles: nat;
+   topUpE8s: nat;
+ };
+type TopUpRun = 
+ record {
+   checks: vec TopUpCheck;
+   finishedAt: int;
+   resolved: nat;
+   startedAt: int;
+   trigger: TopUpTrigger;
+ };
+type TopUpOutcome = 
+ variant {
+   failed: text;
+   minted: nat;
+   notifying;
+   refunded: text;
+ };
+type TopUpLimits = 
+ record {
+   maxE8sPer30Days: nat;
+   maxThresholdCycles: nat;
+   maxTopUpE8s: nat;
+   minThresholdCycles: nat;
+   minTopUpE8s: nat;
+ };
+type TopUpCheckStatus = 
+ variant {
+   balanceUnavailable: text;
+   healthy;
+   skipped: TopUpSkipReason;
+   toppedUp: record {
+               e8s: nat;
+               outcome: TopUpOutcome;
+             };
+   transferFailed: text;
+ };
+type TopUpCheck = 
+ record {
+   balance: opt nat;
+   canisterId: principal;
+   kind: CanisterKind;
+   status: TopUpCheckStatus;
+ };
+type TopUp = 
+ record {
+   at: int;
+   balanceBefore: nat;
+   blockIndex: nat;
+   canisterId: principal;
+   e8s: nat;
+   id: nat;
+   kind: CanisterKind;
+   notifyAttempts: nat;
+   outcome: TopUpOutcome;
+   trigger: TopUpTrigger;
+ };
 type TopProduct = 
  record {
    productId: nat32;
@@ -311,7 +385,7 @@ type Shop =
    assignRole: ("principal": principal, id: RoleId) -> (Result_4);
    /// Cancels `orderId` when still unpaid (`#created` or `#awaitingPayment`); rejects terminal or paid states.
    /// Only the order's buyer, or someone with `Orders.Cancel`, may cancel it.
-   cancelOrder: (orderId: OrderId) -> (Result_56);
+   cancelOrder: (orderId: OrderId) -> (Result_58);
    /// Reads the order's payment ledger (ICP or ckUSDC) once for its invoice account; if the balance
    /// covers the total, marks the order paid (BRE-20). Only the order's buyer, an Owner or an Admin may
    /// call it; anyone else is rejected before any ledger call. Each order's account is read at most once
@@ -320,10 +394,10 @@ type Shop =
    /// on its own timer, so this only makes that happen sooner.
    /// A full payment is honored until the order is cancelled, even after `expiresAt`. An unpaid order past
    /// `expiresAt` is expired on the spot. Paid orders return `#ok` again; cancelled orders are rejected.
-   checkPayment: (orderId: OrderId) -> (Result_54);
+   checkPayment: (orderId: OrderId) -> (Result_56);
    /// Same as `checkPayment`, kept for callers built before ckUSDC orders: it checks an order paid in
    /// either token.
-   checkPaymentICP: (orderId: OrderId) -> (Result_54);
+   checkPaymentICP: (orderId: OrderId) -> (Result_56);
    /// Builds an order for `caller` from line items and `paymentCurrency`, resolving unit prices (USD→ICP via XRC,
    /// USD→USDC one to one, when the catalog has no price in that currency). USDC orders are paid in ckUSDC and
    /// stored with its 6 decimals. Registers a per-order ledger subaccount when the order is stored. Rejects the
@@ -342,7 +416,7 @@ type Shop =
         };
       paymentCurrency: Currency;
       shippingAddress: opt ShippingAddress;
-    }) -> (Result_53);
+    }) -> (Result_55);
    /// Creates a product from `input`, assigns IDs and inventory rows, and rejects an SKU listed twice or already used. Owner or Admin.
    /// If any variant is `#Active`, the product becomes `#Active` and subscribers are notified.
    createProduct: (input: CreateProductInput) -> (Result_6);
@@ -351,7 +425,7 @@ type Shop =
    /// caller.
    createRelease: (input: ReleaseInput) -> (Result_5);
    /// Needs `Team.EditRoles` and every permission in the role.
-   createRole: (name: text, permissions: vec PermissionId) -> (Result_51);
+   createRole: (name: text, permissions: vec PermissionId) -> (Result_53);
    /// The buyer of card order `orderId` gets a Stripe Checkout page to pay it on. The first call
    /// creates the session (expiring in about 31 minutes, when the order expires too) and records it
    /// on the order; later calls return the same page. `successUrl` and `cancelUrl` are where Stripe
@@ -359,7 +433,7 @@ type Shop =
    /// replaces `{CHECKOUT_SESSION_ID}` in them. Payment is confirmed by `checkPayment`, or by the
    /// expiry sweep when the session ends.
    createStripeCheckout: (orderId: OrderId, successUrl: text, cancelUrl:
-    text) -> (Result_50);
+    text) -> (Result_52);
    /// Adds a track. Needs `Music.Edit` and a signed-in caller. Every track needs an MP3 file
    /// (`#mp3_320`); files are private vault keys, the preview a public one.
    createTrack: (input: TrackInput) -> (Result_1);
@@ -376,10 +450,13 @@ type Shop =
    deleteTrack: (id: TrackId) -> (Result_9);
    /// Throws away unpublished changes: the draft goes back to the published layout. Needs
    /// `Storefront.Edit`, a signed-in caller and the current revision. Returns the new revision.
-   discardStorefrontDraft: (expectedRevision: nat) -> (Result_48);
+   discardStorefrontDraft: (expectedRevision: nat) -> (Result_50);
    /// Owner or Admin: low-stock alerts derived from inventory thresholds (one alert per qualifying
    /// inventory row). Other callers get `[]` (BRE-105). Superseded by `getDashboard`'s `stock`.
    getAlerts: () -> (vec Alert) query;
+   /// `Funds.View`: the auto top-up settings, the 30-day spend and the last run. Null for anyone
+   /// else.
+   getAutoTopUp: () -> (opt AutoTopUpStatus) query;
    /// Returns distinct non-empty category strings assigned across products.
    getCategories: () -> (vec text) query;
    /// Returns this canister's cycle balance. No caller check: the balance is not private (anyone can
@@ -387,7 +464,7 @@ type Shop =
    getCyclesBalance: () -> (nat) query;
    /// Owner or Admin: everything the admin dashboard shows, in one call (BRE-146). See
    /// `Dashboard.Dashboard` for each field. Reads every order, like `listOrders`.
-   getDashboard: () -> (Result_47) query;
+   getDashboard: () -> (Result_49) query;
    /// Owner or Admin: the configured private media key for a variant, or `null` if the default path
    /// convention applies. Other callers always get `null` (BRE-105).
    getDigitalAssetKey: (productId: ProductId, variantId: VariantId) ->
@@ -399,11 +476,11 @@ type Shop =
     (FetchExchangeRateResponse);
    /// Owner or Admin: one row per inventory entry with variant/product labels, available qty, and stock
    /// status, a page at a time in variant ID order. Other callers get an empty page (BRE-105).
-   getInventory: (after: opt VariantId, limit: opt nat) -> (Page_8) query;
+   getInventory: (after: opt VariantId, limit: opt nat) -> (Page_9) query;
    /// This canister's recent log entries, newest first (at most `limit`, capped at
    /// `Logger.MAX_LOGS`). Whether they survive an upgrade depends on the canister: shop keeps its
    /// log in stable state, core's is transient and an upgrade clears it. Authorized callers only.
-   getLogs: (limit: opt nat) -> (Result_46) query;
+   getLogs: (limit: opt nat) -> (Result_48) query;
    /// Returns the configured media canister principal, if set, to any signed-in caller. It isn't secret:
    /// buyers build `requestDigitalDelivery`'s download link from it and public assets are served from it.
    /// Private files stay behind the HMAC ticket the vault checks. Core reads it for `linkShopVault`.
@@ -414,22 +491,22 @@ type Shop =
    /// Order `orderId` for its buyer, `Orders.View`, controllers (core, for the shops it hosts) or
    /// Marketplace. Core reads the orders it missed `OrderUpdated` notifications for, after finding
    /// them in `listOrderEvents` (BRE-203), so the same callers may read both.
-   getMyOrder: (orderId: OrderId) -> (Result_45) query;
+   getMyOrder: (orderId: OrderId) -> (Result_47) query;
    /// The caller's own roles and effective permissions. Needs no permission: it shows only the caller's own.
    getMyPermissions: () -> (MyPermissions) query;
    /// Order `orderId`'s history, oldest first (BRE-133), for its buyer or an Owner or Admin. Events
    /// name who acted only by role (`#buyer`, `#merchant`, `#automatic`), never by principal.
-   getOrderHistory: (orderId: OrderId) -> (Result_44) query;
+   getOrderHistory: (orderId: OrderId) -> (Result_46) query;
    /// ICRC-1 account (`owner` + `subaccount`) for paying order `orderId`, and the ledger token it is
    /// paid in ("ICP" or "ckUSDC"), for use with that ledger's `icrc1_transfer` (BRE-20). Errors if the
    /// order is missing or its currency has no ledger. The account is the same on both ledgers.
-   getOrderPaymentAccount: (orderId: OrderId) -> (Result_43) query;
+   getOrderPaymentAccount: (orderId: OrderId) -> (Result_45) query;
    /// ICRC-1 account (`owner` + `subaccount`) for paying order `orderId` in ICP, for use with `icrc1_transfer`;
    /// errors if the order is missing or not ICP. Same destination as `getOrderPaymentAddressICP`.
-   getOrderPaymentAccountICP: (orderId: OrderId) -> (Result_42) query;
+   getOrderPaymentAccountICP: (orderId: OrderId) -> (Result_44) query;
    /// Hex-encoded ledger account identifier for paying order `orderId` in ICP; errors if the order is missing or not ICP.
    /// Only the ICP ledger takes these legacy account IDs; use `getOrderPaymentAccount` for ckUSDC.
-   getOrderPaymentAddressICP: (orderId: OrderId) -> (Result_41) query;
+   getOrderPaymentAddressICP: (orderId: OrderId) -> (Result_43) query;
    /// The permissions roles can be made of, with what each includes. Public: it's the same for every caller.
    getPermissionCatalog: () -> (vec PermissionDef) query;
    /// Returns the product `id` with per-variant stock and stock status, or `null` if missing.
@@ -438,7 +515,7 @@ type Shop =
     (opt ProductAttributeConfig) query;
    /// Product records (catalog view without merged inventory fields), each variant with the release it
    /// sells, a page at a time in ID order (see `lib/Pagination`: pass `next` back as `after`).
-   getProducts: (after: opt ProductId, limit: opt nat) -> (Page_7) query;
+   getProducts: (after: opt ProductId, limit: opt nat) -> (Page_8) query;
    /// Release `id` with its tracks, archived or not, or null. No caller check: past buyers see what
    /// they bought, and it holds no private file keys.
    getPublicRelease: (id: ReleaseId) -> (opt PublicRelease) query;
@@ -477,7 +554,7 @@ type Shop =
    getStorefront: () -> (opt PublishedLayoutView) query;
    /// The draft layout and its revision, for the editor. Needs `Storefront.Edit`, so unpublished pages
    /// stay private.
-   getStorefrontEditor: () -> (Result_40) query;
+   getStorefrontEditor: () -> (Result_42) query;
    /// Owner or Admin: the mode and last four characters of the Stripe key, or null when none is
    /// set. Null for everyone else.
    getStripeKeyStatus: () -> (opt StripeKeyStatus) query;
@@ -485,15 +562,17 @@ type Shop =
    getTrackLyrics: (id: TrackId) -> (opt text) query;
    /// Owner or Admin: the main account's balance and the ledger fee for each token, as `withdrawFunds`
    /// sees them. An update call, since it reads both ledgers; refused callers get no ledger calls.
-   getWithdrawableBalances: () -> (Result_39);
+   getWithdrawableBalances: () -> (Result_41);
    /// Lets `principal` (core) subscribe to the shop's events and see a private location. Owner only.
    grantMarketplaceAccess: ("principal": principal) -> (Result_3);
    /// Whether release `id` has sold, so it can't lose a track or be deleted. Needs `Music.Edit`.
-   isReleaseSold: (id: ReleaseId) -> (Result_37) query;
+   isReleaseSold: (id: ReleaseId) -> (Result_39) query;
+   /// `Funds.View`: top-ups that moved ICP, newest first, before id `after`. Empty for anyone else.
+   listAutoTopUps: (after: opt nat, limit: opt nat) -> (Page_7) query;
    /// Lists each event's subscribers. Owner or Admin.
-   listEventSubscribers: () -> (Result_36) query;
+   listEventSubscribers: () -> (Result_38) query;
    /// Members (principals with at least one role) in principal order. Needs `Team.View`.
-   listMembers: (after: opt principal, limit: opt nat) -> (Result_35) query;
+   listMembers: (after: opt principal, limit: opt nat) -> (Result_37) query;
    /// Orders placed by `caller`, newest first, a page at a time. Empty for the anonymous principal.
    listMyOrders: (after: opt OrderId, limit: opt nat) -> (Page_4) query;
    /// Every order's history across the shop, oldest first, after sequence number `after` (see
@@ -510,12 +589,12 @@ type Shop =
    listPublicReleases: (after: opt ReleaseId, limit: opt nat) ->
     (Page_3) query;
    /// A page of every release, archived ones included, for the editor. Needs `Music.Edit`.
-   listReleases: (after: opt ReleaseId, limit: opt nat) -> (Result_34) query;
+   listReleases: (after: opt ReleaseId, limit: opt nat) -> (Result_36) query;
    /// Roles in ID order. Needs `Team.View`.
-   listRoles: (after: opt RoleId, limit: opt nat) -> (Result_33) query;
+   listRoles: (after: opt RoleId, limit: opt nat) -> (Result_35) query;
    /// A page of every track, with private file keys and lyrics, for the editor: at most
    /// `Music.Limits.MAX_TRACKS_PAGE` tracks. Needs `Music.Edit`.
-   listTracks: (after: opt TrackId, limit: opt nat) -> (Result_32) query;
+   listTracks: (after: opt TrackId, limit: opt nat) -> (Result_34) query;
    /// Owner or Admin: main canister ledger account plus tracked subaccounts with live `icrc1_balance_of` balances.
    listWalletAccounts: () -> (vec Account) query;
    /// `Funds.View`: the saved withdrawal addresses, oldest first. Empty for anyone else, since
@@ -525,35 +604,35 @@ type Shop =
    /// (`#inPerson` when null), then the order becomes `#fulfilled`. Allowed from `#paid`, or from
    /// `#partiallyFulfilled` (some digital lines already downloaded). Needs `Orders.Fulfill`.
    markOrderFulfilled: (orderId: OrderId, method: opt DeliveryMethod) ->
-    (Result_31);
+    (Result_33);
    /// Publishes the draft: buyers see it from now on. Needs `Storefront.Edit`, a signed-in caller and the
    /// current revision.
-   publishStorefront: (expectedRevision: nat) -> (Result_30);
+   publishStorefront: (expectedRevision: nat) -> (Result_32);
    /// Returns funds sent to a cancelled order's payment account (a late or partial payment), minus the
    /// ledger fee, on every supported ledger. The buyer may name the destination account (default: the
    /// buyer's own account). An Owner or Admin may trigger it, but the funds always go to the buyer.
    reclaimOrderPayment: (orderId: OrderId, to: opt RefundDestination) ->
-    (Result_29);
+    (Result_31);
    /// Recognizes the marketplace whose core (backend) canister is `backendCanisterId`: asks it for
    /// its frontend canister and name, records them, and grants it Marketplace access. Owner only.
    /// Recognizing it again refreshes the details.
-   recognizeMarketplace: (backendCanisterId: principal) -> (Result_28);
+   recognizeMarketplace: (backendCanisterId: principal) -> (Result_30);
    /// Removes `principal`'s subscription to `event`; returns whether it had one. Owner or Admin.
    removeEventSubscriber: (event: EventKind, "principal": principal) ->
-    (Result_27);
+    (Result_29);
    /// Owner only. Forgets the Stripe key and turns card payments off. Orders already sent to
    /// Stripe Checkout can't be confirmed afterwards, and expire unpaid.
    removeStripeKey: () -> (Result_3);
    /// Removes an account from the tracked set. Allowed only when the account balance is 0 and caller is the shop owner.
-   removeWalletAccount: (accountId: text) -> (Result_25);
+   removeWalletAccount: (accountId: text) -> (Result_27);
    /// Owner only: removes `to` from the saved withdrawal addresses.
-   removeWithdrawalAddress: (to: Destination) -> (Result_24);
+   removeWithdrawalAddress: (to: Destination) -> (Result_26);
    /// Mints a short-lived HMAC delivery ticket for a paid digital line item. Caller must be the order buyer.
    /// The first ticket for a line records it as delivered, which can fulfil the order (BRE-133).
    /// The download link is `<vault URL><mediaKey>?token=<token>`, built by the client: the shop
    /// doesn't know which network's gateway serves its vault (BRE-140).
    requestDigitalDelivery: (orderId: OrderId, lineIndex: nat, ttlSeconds:
-    opt nat) -> (Result_23);
+    opt nat) -> (Result_25);
    /// Tickets for every file of the release order line `lineIndex` sells, in `format`, in track
    /// order (BRE-185). Only the order's buyer, once it is paid. The files are read from the release
    /// as it is now, so tracks added and files replaced since the sale are included; a track with no
@@ -562,25 +641,32 @@ type Shop =
    /// first call for a line records it as delivered, as `requestDigitalDelivery` does. Signing is
    /// bounded by the release's track cap (`ReleaseDelivery.MAX_FILES`) and costs one `raw_rand`.
    requestReleaseDelivery: (orderId: OrderId, lineIndex: nat, format:
-    AudioFormat, ttlSeconds: opt nat) -> (Result_22);
+    AudioFormat, ttlSeconds: opt nat) -> (Result_24);
    /// Takes Marketplace access from `principal`, and forgets it as a recognized marketplace. Owner only.
    revokeMarketplaceAccess: ("principal": principal) -> (Result_3);
    /// Replaces the HMAC secret that signs delivery tickets with a fresh random one and pushes it to
    /// the media canister. Outstanding tickets stop working. Owner only.
-   rotateHmacSecretKey: () -> (Result_20);
+   rotateHmacSecretKey: () -> (Result_22);
+   /// Owner only: runs auto top-up now instead of waiting for the hourly check. With auto top-up
+   /// off it only asks the CMC about top-ups still waiting on it.
+   runAutoTopUp: () -> (Result_21);
    /// Saves the draft layout and returns the new revision. Needs `Storefront.Edit`, a signed-in caller
    /// and the revision the editor last saw (`#RevisionConflict` otherwise). Every limit is checked and
    /// the theme must pass WCAG AA before anything is stored.
    saveStorefrontDraft: (layout: LayoutInput, expectedRevision: nat) ->
-    (Result_19);
+    (Result_20);
    /// Owner only: saves `to` with `name`, or renames it if it's already saved. At most
    /// `WithdrawalAddresses.MAX_ADDRESSES`, each name at most `MAX_NAME_CHARS` characters.
    /// `withdrawFunds` doesn't require a saved address.
-   saveWithdrawalAddress: (to: Destination, name: text) -> (Result_18);
+   saveWithdrawalAddress: (to: Destination, name: text) -> (Result_19);
    /// Replaces the artist profile, or with null removes it. Needs `Storefront.Edit` and a signed-in
    /// caller. Every length and count is checked before anything is stored (`#Invalid` lists each
    /// problem).
-   setArtistProfile: (artistProfile: opt ArtistProfile) -> (Result_17);
+   setArtistProfile: (artistProfile: opt ArtistProfile) -> (Result_18);
+   /// Owner only: turns auto top-up on with `settings`, or off with null. When on, the shop
+   /// converts ICP from its main account into cycles for itself or its vault whenever either is
+   /// under `thresholdCycles`, `topUpE8s` at a time, at most `maxE8sPer30Days` in any 30 days.
+   setAutoTopUp: (settings: opt TopUpSettings) -> (Result_17);
    /// Stores the private media object key for a digital product variant. Owner or Admin.
    setDigitalAssetKey: (productId: ProductId, variantId: VariantId, mediaKey:
     text) -> (Result_15);
@@ -702,6 +788,11 @@ type ShippingAddress =
    region: text;
  };
 type SetPresentationError = variant {Unauthorized: text;};
+type SetAutoTopUpError = 
+ variant {
+   InvalidSettings: text;
+   Unauthorized: text;
+ };
 type SetArtistProfileError = 
  variant {
    Invalid: vec ProfileProblem;
@@ -783,6 +874,11 @@ type Sales =
    revenue: vec Money__1;
  };
 type SKU = text;
+type RunAutoTopUpError = 
+ variant {
+   Busy;
+   Unauthorized: text;
+ };
 type RoleView = 
  record {
    id: RoleId;
@@ -824,7 +920,7 @@ type Result_6 =
         };
    ok: Product;
  };
-type Result_56 = 
+type Result_58 = 
  variant {
    err: variant {
           InputError: text;
@@ -833,7 +929,7 @@ type Result_56 =
         };
    ok: Order;
  };
-type Result_54 = 
+type Result_56 = 
  variant {
    err: variant {
           NotFoundError: text;
@@ -842,17 +938,17 @@ type Result_54 =
         };
    ok;
  };
-type Result_53 = 
+type Result_55 = 
  variant {
    err: variant {InternalError: text;};
    ok: Order;
  };
-type Result_51 = 
+type Result_53 = 
  variant {
    err: Error;
    ok: RoleId;
  };
-type Result_50 = 
+type Result_52 = 
  variant {
    err:
     variant {
@@ -865,27 +961,27 @@ type Result_50 =
     };
    ok: record {url: text;};
  };
+type Result_50 = 
+ variant {
+   err: PublishError;
+   ok: nat;
+ };
 type Result_5 = 
  variant {
    err: MusicError;
    ok: Release;
  };
-type Result_48 = 
- variant {
-   err: PublishError;
-   ok: nat;
- };
-type Result_47 = 
+type Result_49 = 
  variant {
    err: variant {Unauthorized: text;};
    ok: Dashboard;
  };
-type Result_46 = 
+type Result_48 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec Log;
  };
-type Result_45 = 
+type Result_47 = 
  variant {
    err: variant {
           NotFoundError: text;
@@ -893,7 +989,7 @@ type Result_45 =
         };
    ok: Order;
  };
-type Result_44 = 
+type Result_46 = 
  variant {
    err: variant {
           NotFoundError: text;
@@ -901,7 +997,7 @@ type Result_44 =
         };
    ok: vec OrderEvent;
  };
-type Result_43 = 
+type Result_45 = 
  variant {
    err: variant {NotFoundError: text;};
    ok: record {
@@ -909,27 +1005,22 @@ type Result_43 =
          token: text;
        };
  };
-type Result_42 = 
+type Result_44 = 
  variant {
    err: variant {NotFoundError: text;};
    ok: Account__1;
  };
-type Result_41 = 
+type Result_43 = 
  variant {
    err: variant {NotFoundError: text;};
    ok: text;
  };
-type Result_40 = 
+type Result_42 = 
  variant {
    err: variant {Unauthorized: text;};
    ok: EditorState;
  };
-type Result_4 = 
- variant {
-   err: Error;
-   ok;
- };
-type Result_39 = 
+type Result_41 = 
  variant {
    err: variant {Unauthorized: text;};
    ok: vec record {
@@ -938,37 +1029,42 @@ type Result_39 =
              token: Token;
            };
  };
-type Result_37 = 
+type Result_4 = 
+ variant {
+   err: Error;
+   ok;
+ };
+type Result_39 = 
  variant {
    err: MusicError;
    ok: bool;
  };
-type Result_36 = 
+type Result_38 = 
  variant {
    err: variant {Unauthorized: text;};
    ok: Subscribers;
  };
-type Result_35 = 
+type Result_37 = 
  variant {
    err: Error;
    ok: Page_6;
  };
-type Result_34 = 
+type Result_36 = 
  variant {
    err: MusicError;
    ok: Page_2;
  };
-type Result_33 = 
+type Result_35 = 
  variant {
    err: Error;
    ok: Page_1;
  };
-type Result_32 = 
+type Result_34 = 
  variant {
    err: MusicError;
    ok: Page;
  };
-type Result_31 = 
+type Result_33 = 
  variant {
    err: variant {
           InvalidStatus: text;
@@ -977,17 +1073,12 @@ type Result_31 =
         };
    ok: Order;
  };
-type Result_30 = 
+type Result_32 = 
  variant {
    err: PublishError;
    ok;
  };
-type Result_3 = 
- variant {
-   err: variant {Unauthorized: text;};
-   ok;
- };
-type Result_29 = 
+type Result_31 = 
  variant {
    err:
     variant {
@@ -999,17 +1090,22 @@ type Result_29 =
     };
    ok: vec OrderRefund;
  };
-type Result_28 = 
+type Result_30 = 
  variant {
    err: RecognizeError;
    ok: RecognizedMarketplace;
  };
-type Result_27 = 
+type Result_3 = 
+ variant {
+   err: variant {Unauthorized: text;};
+   ok;
+ };
+type Result_29 = 
  variant {
    err: variant {Unauthorized: text;};
    ok: bool;
  };
-type Result_25 = 
+type Result_27 = 
  variant {
    err:
     variant {
@@ -1022,28 +1118,38 @@ type Result_25 =
     };
    ok;
  };
-type Result_24 = 
+type Result_26 = 
  variant {
    err: RemoveError;
    ok;
  };
-type Result_23 = 
+type Result_25 = 
  variant {
    err: EntitlementError;
    ok: DigitalDeliveryResponse;
  };
-type Result_22 = 
+type Result_24 = 
  variant {
    err: ReleaseDeliveryError;
    ok: ReleaseDeliveryResponse;
  };
-type Result_20 = 
+type Result_22 = 
  variant {
    err: variant {
           Failed: text;
           Unauthorized: text;
         };
    ok;
+ };
+type Result_21 = 
+ variant {
+   err: RunAutoTopUpError;
+   ok: TopUpRun;
+ };
+type Result_20 = 
+ variant {
+   err: SaveDraftError;
+   ok: nat;
  };
 type Result_2 = 
  variant {
@@ -1052,17 +1158,17 @@ type Result_2 =
  };
 type Result_19 = 
  variant {
-   err: SaveDraftError;
-   ok: nat;
- };
-type Result_18 = 
- variant {
    err: SaveAddressError;
    ok: WithdrawalAddress;
  };
-type Result_17 = 
+type Result_18 = 
  variant {
    err: SetArtistProfileError;
+   ok;
+ };
+type Result_17 = 
+ variant {
+   err: SetAutoTopUpError;
    ok;
  };
 type Result_15 = 
@@ -1438,15 +1544,20 @@ type PaymentProvider =
    Manual;
    Stripe;
  };
-type Page_8 = 
+type Page_9 = 
  record {
    items: vec InventoryItem;
    next: opt VariantId;
  };
-type Page_7 = 
+type Page_8 = 
  record {
    items: vec CatalogProduct;
    next: opt ProductId;
+ };
+type Page_7 = 
+ record {
+   items: vec TopUp;
+   next: opt nat;
  };
 type Page_6 = 
  record {
@@ -2023,12 +2134,28 @@ type CatalogProduct =
    title: text;
    variants: vec CatalogVariant;
  };
+type CanisterKind = 
+ variant {
+   shop;
+   vault;
+ };
 type CancelReason = 
  variant {
    buyer;
    expired;
    merchant;
    paymentMismatch;
+ };
+type AutoTopUpStatus = 
+ record {
+   lastRun: opt TopUpRun;
+   limits: TopUpLimits;
+   running: bool;
+   settings: opt TopUpSettings;
+   spentLast30Days: record {
+                      count: nat;
+                      e8s: nat;
+                    };
  };
 type AudioFormat = 
  variant {

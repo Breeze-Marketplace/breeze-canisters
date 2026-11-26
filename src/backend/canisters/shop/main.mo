@@ -17,6 +17,7 @@ import ProductService "lib/products";
 import OrderExpiry "lib/order_expiry";
 import OrderEvents "lib/order_events";
 import WithdrawalAddresses "lib/withdrawal_addresses";
+import AutoTopUp "lib/auto_top_up";
 import ShopPermissions "lib/permissions";
 import Marketplaces "lib/marketplaces";
 import Permissions "../../lib/Permissions";
@@ -50,6 +51,7 @@ import OwnershipApi "mixins/OwnershipApi";
 import TeamApi "../../mixins/Team";
 import CatalogApi "mixins/CatalogApi";
 import WalletApi "mixins/WalletApi";
+import AutoTopUpApi "mixins/AutoTopUpApi";
 import DashboardApi "mixins/DashboardApi";
 import MediaApi "mixins/MediaApi";
 import OrdersApi "mixins/OrdersApi";
@@ -88,6 +90,10 @@ shared ({ caller = initializer }) persistent actor class Shop(
 
     /// The Owner's saved withdrawal addresses, each with a label (BRE-150).
     let withdrawalAddresses : WithdrawalAddresses.Book;
+
+    /// Automatic cycle top-ups of the shop and its vault from the main account's ICP (BRE-212).
+    let autoTopUp : AutoTopUp.State;
+    transient let autoTopUpRun = AutoTopUp.emptyRunState();
 
     var productIdCounter : ProductId;
     let products : Map.Map<ProductId, Product>;
@@ -207,6 +213,7 @@ shared ({ caller = initializer }) persistent actor class Shop(
     include TeamApi(authService.team, logger, func(_ : Principal, _ : Permissions.TeamChange) {});
     include CatalogApi(products, productVariants, inventory, music, productService, authService, pubSubService, unpaidOrderHolds, heldReleaseVariant, logger);
     include WalletApi(wallet, orders, withdrawalAddresses, authService, Principal.fromActor(self), logger);
+    include AutoTopUpApi(autoTopUp, autoTopUpRun, media, authService, Principal.fromActor(self), logger);
     include DashboardApi(products, productVariants, inventory, orders, authService);
     include MediaApi(media, digitalAssetKeys, products, productVariants, orders, music, authService, Principal.fromActor(self), logger, recordDigitalDelivery);
     include OrdersApi(orders, awaitingPaymentOrderIds, orderEvents, wallet, productVariants, products, inventory, authService, orderService, pubSubService, exchangeRates, stripe, getNextOrderId, recordReleaseSales, Principal.fromActor(self), logger);
@@ -237,4 +244,13 @@ shared ({ caller = initializer }) persistent actor class Shop(
     if (rearmedOrders > 0) {
         logger.info("Re-armed expiry and the payment watcher for " # debug_show (rearmedOrders) # " orders awaiting payment");
     };
+
+    // Timers don't survive upgrades, so arm auto top-up on every install and upgrade: a run two
+    // minutes in, then hourly. A run with auto top-up off and nothing waiting on the CMC makes no
+    // calls. Arming a timer can't trap.
+    func autoTopUpTick() : async () {
+        ignore await* runAutoTopUpOnce(#timer);
+    };
+    ignore Timer.setTimer<system>(#seconds 120, autoTopUpTick);
+    ignore Timer.recurringTimer<system>(#seconds 3_600, autoTopUpTick);
 };

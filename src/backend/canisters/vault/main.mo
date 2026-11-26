@@ -11,6 +11,7 @@ import AssetApi "mixins/AssetApi";
 import HttpApi "mixins/HttpApi";
 import DeliverySettingsApi "mixins/DeliverySettingsApi";
 import LibraryApi "mixins/LibraryApi";
+import CyclesApi "mixins/CyclesApi";
 
 shared ({ caller = creator }) persistent actor class Valut() = self {
     // Stable state gets its initial values from the migration chain in ./migrations.
@@ -55,6 +56,7 @@ shared ({ caller = creator }) persistent actor class Valut() = self {
     include HttpApi(assets, certs, gate);
     include DeliverySettingsApi(creator, deliverySettings);
     include LibraryApi(assets, certs, persistEntries, writers, folders);
+    include CyclesApi();
 
     // Timers don't survive upgrades, so this runs after every install and upgrade. Arming one can't trap.
     ignore Timer.setTimer<system>(#seconds 0, recertifyAllAssets);
