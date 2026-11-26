@@ -205,7 +205,7 @@ shared ({ caller = initializer }) persistent actor class Shop(
     include PubSubApi(pubSubService, authService);
     include OwnershipApi(authService, recognizedMarketplaces, logger);
     include TeamApi(authService.team, logger, func(_ : Principal, _ : Permissions.TeamChange) {});
-    include CatalogApi(products, productVariants, inventory, music, productService, authService, pubSubService, unpaidOrderHolds, logger);
+    include CatalogApi(products, productVariants, inventory, music, productService, authService, pubSubService, unpaidOrderHolds, heldReleaseVariant, logger);
     include WalletApi(wallet, orders, withdrawalAddresses, authService, Principal.fromActor(self), logger);
     include DashboardApi(products, productVariants, inventory, orders, authService);
     include MediaApi(media, digitalAssetKeys, products, productVariants, orders, music, authService, Principal.fromActor(self), logger, recordDigitalDelivery);

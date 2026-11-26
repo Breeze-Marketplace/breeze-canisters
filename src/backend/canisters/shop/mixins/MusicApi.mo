@@ -9,13 +9,13 @@ import AuthService "../lib/auth";
 import Music "../lib/music";
 import PubSubService "../lib/pubsub";
 import ProductService "../lib/products";
+import ReleaseSales "../lib/release_sales";
 
 import {
     type Order;
     type OrderId;
     type Product;
     type ProductId;
-    type OrderStatus;
     type ProductVariant;
     type VariantId;
 } "../types";
@@ -220,7 +220,7 @@ mixin (
 
     /// Records the releases a paid order delivers as sold. `OrdersApi.storeOrder` calls it on every write.
     private func recordReleaseSales(order : Order) {
-        if (not isSaleStatus(order.status)) return;
+        if (not ReleaseSales.isSale(order.status)) return;
         for (item in order.items.values()) {
             switch (Map.get(productVariants, Map.n32hash, item.variantId)) {
                 case (?{ deliverable = ?#release(r) }) Music.markSold(music, r);
@@ -232,18 +232,14 @@ mixin (
     /// Whether a paid order holds variant `variantId`. Scans every order: only a merchant's relinking
     /// pays for it.
     private func variantHasSold(variantId : VariantId) : Bool {
-        for (order in Map.vals(orders)) {
-            if (isSaleStatus(order.status) and order.items.any(func(i : { variantId : VariantId }) : Bool = i.variantId == variantId)) return true;
-        };
-        false;
+        ReleaseSales.hasSold(Map.vals(orders), variantId);
     };
 
-    /// An order a buyer paid for, even if since fulfilled or refunded: its lines count as sales.
-    private func isSaleStatus(status : OrderStatus) : Bool {
-        switch (status) {
-            case (#paid or #processing or #partiallyFulfilled or #fulfilled or #refunded) true;
-            case (#created or #awaitingPayment or #canceled) false;
-        };
+    /// The first of `variants` a buyer gets, or will once their order is paid, a release through,
+    /// which `CatalogApi` won't delete or drop (BRE-192). Scans every order only when one of them
+    /// sells a sold release.
+    private func heldReleaseVariant(variants : [ProductVariant]) : ?(ProductVariant, ReleaseSales.Hold) {
+        ReleaseSales.heldReleaseVariant(music, Map.vals(orders), unpaidOrderHolds, variants);
     };
 
     private func isReleaseLinked(id : Music.ReleaseId) : Bool {

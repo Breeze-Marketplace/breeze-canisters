@@ -364,6 +364,7 @@ type Shop =
    /// (`#mp3_320`); files are private vault keys, the preview a public one.
    createTrack: (input: TrackInput) -> (Result_1);
    /// Permanently removes the product, variants, and inventory; order history keeps line snapshots.
+   /// Refuses a product with a variant a buyer gets a release through, paid or awaiting payment: archive it instead (BRE-192).
    deleteProduct: (id: ProductId) -> (Result_12);
    /// Deletes a release that never sold (`#ReleaseSold`: archive it instead) and no variant sells
    /// (`#InUse`). Needs `Music.Edit` and a signed-in caller.
@@ -646,7 +647,9 @@ type Shop =
    /// Applies `stockDelta` and `reservedDelta` to `input.variantId`, optionally updates low-stock threshold. Owner or Admin.
    updateInventory: (input: UpdateInventoryRequest) -> (Result_7);
    /// Updates product `input.id` and its variants, matched by SKU: new SKUs create new variant IDs and inventory,
-   /// and variants left out are removed. Rejects an SKU listed twice or used by another product. Owner or Admin.
+   /// and variants left out are removed. Rejects an SKU listed twice or used by another product, and
+   /// leaving out (or renaming the SKU of) a variant a buyer gets a release through, paid or awaiting payment: archive it
+   /// instead (BRE-192). Owner or Admin.
    /// Active products trigger a product-updated notification.
    updateProduct: (input: UpdateProductInput) -> (Result_6);
    /// Replaces a release's details and track list. Once it has sold, every track must stay

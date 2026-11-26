@@ -13,6 +13,7 @@ import ShopPermissions "../lib/permissions";
 import Music "../lib/music";
 import PubSubService "../lib/pubsub";
 import ProductService "../lib/products";
+import ReleaseSales "../lib/release_sales";
 import {
     type Product;
     type CatalogProduct;
@@ -38,6 +39,8 @@ mixin (
     pubSubService : PubSubService.PubSubService,
     // Whether an order awaiting payment holds a variant (`OrdersApi`, BRE-185).
     unpaidOrderHolds : VariantId -> Bool,
+    // The first of some variants a buyer gets, or will get, a release through (`MusicApi`, BRE-192).
+    heldReleaseVariant : [ProductVariant] -> ?(ProductVariant, ReleaseSales.Hold),
     logger : Logger.BoundLogger,
 ) {
     /// Returns the product `id` with per-variant stock and stock status, or `null` if missing.
@@ -82,7 +85,9 @@ mixin (
     };
 
     /// Updates product `input.id` and its variants, matched by SKU: new SKUs create new variant IDs and inventory,
-    /// and variants left out are removed. Rejects an SKU listed twice or used by another product. Owner or Admin.
+    /// and variants left out are removed. Rejects an SKU listed twice or used by another product, and
+    /// leaving out (or renaming the SKU of) a variant a buyer gets a release through, paid or awaiting payment: archive it
+    /// instead (BRE-192). Owner or Admin.
     /// Active products trigger a product-updated notification.
     public shared ({ caller }) func updateProduct(
         input : ProductService.UpdateProductInput
@@ -102,7 +107,7 @@ mixin (
             };
             case null {};
         };
-        let product = switch (ProductService.updateProduct(productService, input)) {
+        let product = switch (ProductService.updateProduct(productService, input, heldReleaseVariant)) {
             case (#ok(product)) product;
             case (#err(e)) return #err(e);
         };
@@ -137,13 +142,14 @@ mixin (
     };
 
     /// Permanently removes the product, variants, and inventory; order history keeps line snapshots.
+    /// Refuses a product with a variant a buyer gets a release through, paid or awaiting payment: archive it instead (BRE-192).
     public shared ({ caller }) func deleteProduct(
         id : ProductId
     ) : async Result<(), { #InputError : Text; #InternalError : Text; #Unauthorized : Text }> {
         if (not AuthService.hasPermission(authService, caller, ShopPermissions.productsEdit)) {
             return #err(#Unauthorized("Insufficient role to delete products"));
         };
-        switch (ProductService.deleteProduct(productService, id)) {
+        switch (ProductService.deleteProduct(productService, id, heldReleaseVariant)) {
             case (#ok()) {
                 logger.info("Deleted product " # debug_show (id));
                 try { ignore pubSubService.notifyProductDeleted(id) } catch (e) {

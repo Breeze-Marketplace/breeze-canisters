@@ -4,6 +4,7 @@ import Nat32 "mo:core/Nat32";
 import Time "mo:core/Time";
 import Map "mo:map/Map";
 
+import ReleaseSales "release_sales";
 import Stock "stock";
 import VariantSkus "variant_skus";
 import VariantAttributes "variant_attributes";
@@ -259,10 +260,13 @@ module ProductService {
 
     /// Replaces product `input.id`'s fields and variants. Variants are matched by SKU: a known SKU keeps
     /// its variant (and stock), a new one gets a new variant and inventory row, and variants left out are
-    /// removed. Rejects an SKU listed twice or used by another product. The caller checks roles.
+    /// removed. Rejects an SKU listed twice or used by another product, and leaving out a variant that
+    /// `heldReleaseVariant` returns: a buyer gets, or will get, their release through it (BRE-192).
+    /// Nothing is written when it rejects. The caller checks roles.
     public func updateProduct(
         productService : ProductService,
         input : UpdateProductInput,
+        heldReleaseVariant : [ProductVariant] -> ?(ProductVariant, ReleaseSales.Hold),
     ) : Result<Product, UpdateProductError> {
         let existingProduct = Map.get(productService.products, Map.n32hash, input.id);
         let product = switch (existingProduct) {
@@ -283,6 +287,14 @@ module ProductService {
         ) {
             case (#ok(plan)) plan;
             case (#err(e)) return #err(#InputError(e));
+        };
+
+        let removedVariants = product.variants.filter(
+            func(v : ProductVariant) : Bool = plan.removed.any(func(removedId : VariantId) : Bool = removedId == v.id)
+        );
+        switch (heldReleaseVariant(removedVariants)) {
+            case (?(held, hold)) return #err(#InputError(heldReleaseRefusal(held, hold, "remove it") # "; keep it, with its SKU " # held.sku # ", and archive it instead"));
+            case null {};
         };
 
         let attributes = Array.map<VariantInput, [ProductAttribute]>(
@@ -401,6 +413,14 @@ module ProductService {
         let _ = Map.put(productService.inventory, Map.n32hash, variantId, entry);
     };
 
+    func heldReleaseRefusal(variant : ProductVariant, hold : ReleaseSales.Hold, change : Text) : Text {
+        let reason = switch (hold) {
+            case (#sold) "has sold with a release, and its buyers download it";
+            case (#awaitingPayment) "sells a release an order awaiting payment holds, and its buyer will download it";
+        };
+        "Variant \"" # variant.name # "\" " # reason # " through this variant, so you can't " # change;
+    };
+
     /// Removes a variant with its SKU index entry and inventory row. Its digital asset key stays:
     /// buyers of past orders still download through it, and variant IDs are never reused.
     func removeVariant(productService : ProductService, variantId : VariantId) {
@@ -462,9 +482,13 @@ module ProductService {
         return #ok(updatedProduct);
     };
 
+    /// Removes product `id` with its variants, inventory and attribute config. Rejects a product with a
+    /// variant that `heldReleaseVariant` returns: a buyer gets, or will get, their release through it
+    /// (BRE-192). The caller checks roles.
     public func deleteProduct(
         productService : ProductService,
         id : ProductId,
+        heldReleaseVariant : [ProductVariant] -> ?(ProductVariant, ReleaseSales.Hold),
     ) : Result<(), { #InputError : Text }> {
         let existingProduct = Map.get(productService.products, Map.n32hash, id);
         let product = switch (existingProduct) {
@@ -472,6 +496,10 @@ module ProductService {
             case null {
                 return #err(#InputError("Product with ID " # Nat32.toText(id) # " does not exist"));
             };
+        };
+        switch (heldReleaseVariant(product.variants)) {
+            case (?(held, hold)) return #err(#InputError(heldReleaseRefusal(held, hold, "delete its product") # "; archive the product instead"));
+            case null {};
         };
         for (v in product.variants.vals()) {
             let _ = Map.remove(productService.productVariants, Map.n32hash, v.id);
