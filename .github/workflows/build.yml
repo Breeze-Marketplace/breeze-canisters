@@ -19,7 +19,7 @@ jobs:
           node-version: 22
 
       - name: Install toolchain
-        run: npm install -g @icp-sdk/icp-cli @icp-sdk/ic-wasm ic-mops@3.4.2
+        run: npm install -g @icp-sdk/icp-cli@1.9.0 @icp-sdk/ic-wasm ic-mops@3.4.2
 
       - name: Install packages
         run: mops install
@@ -33,6 +33,9 @@ jobs:
       # Published so anyone can compare them with the module hashes of deployed canisters.
       - name: Module hashes
         run: |
-          for wasm in .icp/cache/artifacts/*; do
-            echo "$(basename "$wasm") $(shasum -a 256 "$wasm" | cut -d' ' -f1)"
+          # icp-cli stores each wasm by its hash; .refs/<name> names the hash of that canister's build.
+          artifacts=.icp/cache/artifacts
+          for ref in "$artifacts"/.refs/*; do
+            wasm="$artifacts/.modules/$(cat "$ref").wasm"
+            echo "$(basename "$ref") $(shasum -a 256 "$wasm" | cut -d' ' -f1)"
           done | tee -a "$GITHUB_STEP_SUMMARY"

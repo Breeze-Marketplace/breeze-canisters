@@ -13,13 +13,13 @@ This repository is a one-way mirror of these canisters and the shared code they 
 You need Node 22, [icp-cli](https://cli.internetcomputer.org) 1.7+ and mops 3.4.2. `mops.toml` pins the Motoko compiler, and `mops.lock` pins the dependencies.
 
 ```bash
-npm install -g @icp-sdk/icp-cli @icp-sdk/ic-wasm ic-mops@3.4.2
+npm install -g @icp-sdk/icp-cli@1.9.0 @icp-sdk/ic-wasm ic-mops@3.4.2
 mops install
 icp build
 mops test
 ```
 
-The wasms land in `.icp/cache/artifacts/<name>`.
+icp-cli stores each wasm by its hash, in `.icp/cache/artifacts/.modules/<hash>.wasm`, and `.icp/cache/artifacts/.refs/<name>` holds the hash of that canister's build.
 
 ## Verify a deployed canister
 
@@ -34,7 +34,7 @@ Every commit's **Build** workflow run lists the hash of each wasm under **Module
 To build it yourself, check out that commit and run the build above, then:
 
 ```bash
-shasum -a 256 .icp/cache/artifacts/shop
+shasum -a 256 ".icp/cache/artifacts/.modules/$(cat .icp/cache/artifacts/.refs/shop).wasm"
 ```
 
 Build on Linux (x86-64), for example in Docker. The Motoko compiler's macOS and Linux binaries embed different build IDs in the wasm's `moc:version` metadata, so a macOS build never matches, even from the same source and compiler version.
