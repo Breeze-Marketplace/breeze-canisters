@@ -13,7 +13,7 @@ import MockLogger "../../../../../lib/Logger/mock";
 import TimeUtil "../../../../../lib/Time";
 
 import ShopCreationAPI "../lib";
-import { mockLedgers; type MockedTransfer } "../mock";
+import { mockLedgers; type MockLedgerState } "../mock";
 
 let core = Principal.fromText("uxrrr-q7777-77774-qaaaq-cai");
 let alice = Principal.fromText("vg3po-ix777-77774-qaafa-cai");
@@ -26,13 +26,7 @@ let PRICE = 5_000_000;
 
 type Setup = {
     api : ShopCreationAPI.API;
-    ledger : {
-        var balance : Nat;
-        var failTransfers : Bool;
-        var trapTransfers : Bool;
-        fee : Nat;
-        transfers : List.List<MockedTransfer>;
-    };
+    ledger : MockLedgerState;
     clock : { var now : Time.Time };
 };
 
@@ -344,6 +338,77 @@ suite(
                         ledger.failTransfers := true;
                         expect.bool((await ShopCreationAPI.refund(api, alice, id, refundTo)) == #err(#LedgerError("transfer rejected"))).isTrue();
                         expect.bool(status(api, alice, id) == #Pending).isTrue();
+                    },
+                );
+            },
+        );
+
+        await suite(
+            "in ckUSDC",
+            func() : async () {
+                let CKUSDC_PRICE = ShopCreationAPI.usdCentsToCkusdc(1_000);
+                func ckusdcRequest(name : Text) : ShopCreationAPI.CreateQuoteRequest {
+                    { request(name, CKUSDC_PRICE) with currency = #ckUSDC };
+                };
+                func ckusdcSetup(balance : Nat) : Setup {
+                    let configured = setup(balance, []);
+                    configured.ledger.depositCurrency := #ckUSDC;
+                    configured;
+                };
+
+                await test(
+                    "a quote has an ICRC-1 deposit account and no ICP account ID",
+                    func() : async () {
+                        let { api } = ckusdcSetup(0);
+                        let #ok(view) = ShopCreationAPI.createQuote(api, alice, ckusdcRequest("shop")) else Runtime.trap("createQuote failed");
+                        expect.bool(view.currency == #ckUSDC).isTrue();
+                        expect.nat(view.amount).equal(CKUSDC_PRICE);
+                        expect.principal(view.depositAccount.owner).equal(core);
+                        expect.bool(view.depositAccountId == null).isTrue();
+                    },
+                );
+
+                await test(
+                    "claim checks the ckUSDC deposit and sweeps it on the ckUSDC ledger",
+                    func() : async () {
+                        let { api; ledger } = ckusdcSetup(CKUSDC_PRICE - 1);
+                        let id = quoteId(api, alice, ckusdcRequest("shop"));
+                        let underpaid = await ShopCreationAPI.claim(api, alice, id, createsShop);
+                        expect.bool(underpaid == #err(#NotPaid({ required = CKUSDC_PRICE; received = CKUSDC_PRICE - 1 }))).isTrue();
+
+                        ledger.balance := CKUSDC_PRICE;
+                        expect.bool((await ShopCreationAPI.claim(api, alice, id, createsShop)) == #ok(shopId)).isTrue();
+                        let ?sweep = List.get(ledger.transfers, 0) else Runtime.trap("no sweep");
+                        expect.bool(sweep.currency == #ckUSDC).isTrue();
+                        expect.nat(sweep.amount).equal(CKUSDC_PRICE - FEE);
+                        expect.principal(sweep.to.owner).equal(core);
+                    },
+                );
+
+                await test(
+                    "refund returns the ckUSDC deposit less the ckUSDC fee",
+                    func() : async () {
+                        let { api; ledger } = ckusdcSetup(CKUSDC_PRICE);
+                        let id = quoteId(api, alice, ckusdcRequest("shop"));
+                        let refundTo = { owner = alice; subaccount = null };
+                        expect.bool((await ShopCreationAPI.refund(api, alice, id, refundTo)) == #ok(CKUSDC_PRICE - FEE)).isTrue();
+                        expect.bool(status(api, alice, id) == #Refunded).isTrue();
+                        let ?sent = List.get(ledger.transfers, 0) else Runtime.trap("no refund");
+                        expect.bool(sent.currency == #ckUSDC).isTrue();
+                        expect.principal(sent.to.owner).equal(alice);
+                        expect.nat(ledger.balance).equal(0);
+                    },
+                );
+
+                await test(
+                    "ICP sent to a ckUSDC quote doesn't pay it",
+                    func() : async () {
+                        let { api; ledger } = setup(CKUSDC_PRICE, []);
+                        let id = quoteId(api, alice, ckusdcRequest("shop"));
+                        let res = await ShopCreationAPI.claim(api, alice, id, createsShop);
+                        expect.bool(res == #err(#NotPaid({ required = CKUSDC_PRICE; received = 0 }))).isTrue();
+                        expect.bool((await ShopCreationAPI.refund(api, alice, id, { owner = alice; subaccount = null })) == #err(#NothingToRefund)).isTrue();
+                        expect.nat(List.size(ledger.transfers)).equal(0);
                     },
                 );
             },
