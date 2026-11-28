@@ -1,0 +1,109 @@
+import Array "mo:core/Array";
+import Int "mo:core/Int";
+import Map "mo:core/Map";
+import Nat "mo:core/Nat";
+import Nat64 "mo:core/Nat64";
+import Time "mo:core/Time";
+import II "II";
+import Metrics "Metrics";
+import Outbox "Outbox";
+
+/// What a flush decides, with no `await` in sight: the async shell builds a
+/// batch, makes the call, and hands the answer back here.
+module {
+
+    public type Outcome = {
+        /// The origin does not publish this canister as one of its senders.
+        #notAuthorized;
+        /// The batch was too large, and nothing in it was enqueued.
+        #tooMany : Nat;
+        /// Sent, with whatever Internet Identity would not take.
+        #answered : [II.NotAccepted];
+        /// The call itself failed.
+        #unreachable;
+    };
+
+    public func arg(origin : Text, batch : [Outbox.Entry]) : II.SendNotificationArg = {
+        origin;
+        notifications = batch.map<Outbox.Entry, II.Notification>(
+            func(entry) = {
+                id = entry.id;
+                recipient = entry.recipient;
+                expires_at = ?Int.abs(entry.expiresAt).toNat64();
+                urgency = ?urgencyOf(entry.lane);
+            }
+        );
+    };
+
+    /// Applies an outcome to the batch that produced it.
+    public func apply(
+        outbox : Outbox.State,
+        pipeline : Metrics.State,
+        batch : [Outbox.Entry],
+        outcome : Outcome,
+        now : Time.Time,
+    ) {
+        switch outcome {
+            case (#answered(notAccepted)) {
+                let refused = Map.empty<Nat64, II.NotAcceptedReason>();
+                for (entry in notAccepted.values()) {
+                    refused.add(Nat64.compare, entry.id, entry.reason);
+                };
+
+                for (entry in batch.values()) {
+                    switch (refused.get(Nat64.compare, entry.id)) {
+                        case null {
+                            count(pipeline, entry, #accepted);
+                            outbox.settle(entry);
+                        };
+                        case (?#Deferred { retry_after }) {
+                            count(pipeline, entry, #deferred);
+                            outbox.defer(entry, retry_after.toNat());
+                        };
+                        case (?_) {
+                            // No such recipient, or no channel: the user fixes both, and has
+                            // until the notification expires to do it.
+                            if (not outbox.park(entry, now)) {
+                                count(pipeline, entry, #dropped);
+                            };
+                        };
+                    };
+                };
+            };
+
+            // The call failed, or the origin doesn't list this canister as a
+            // sender: one more attempt later in the window, not a retry every
+            // coalesce period until it expires.
+            case (#unreachable or #notAuthorized) {
+                for (entry in batch.values()) {
+                    if (not outbox.park(entry, now)) {
+                        count(pipeline, entry, #dropped);
+                    };
+                };
+            };
+
+            case (#tooMany(_)) {
+                for (entry in batch.values()) {
+                    outbox.requeue(entry, now);
+                };
+            };
+        };
+    };
+
+    func urgencyOf(lane : Nat) : { #VeryLow; #Low; #Normal; #High } = switch lane {
+        case 0 #High;
+        case 1 #Normal;
+        case 2 #Low;
+        case _ #VeryLow;
+    };
+
+    /// A step counts in the hour its notification came in, and in the funnel its
+    /// app named.
+    public func count(pipeline : Metrics.State, entry : Outbox.Entry, event : Metrics.Event) {
+        pipeline.record(entry.queuedHour, event, 1);
+        switch (entry.funnel) {
+            case (?name) pipeline.recordFunnel(name, event, 1);
+            case null {};
+        };
+    };
+};

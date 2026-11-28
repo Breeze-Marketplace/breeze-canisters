@@ -41,6 +41,15 @@ mixin (adminApi : AdminAPI.API, alerts : AlertsAPI.State) {
         #ok;
     };
 
+    /// Turns on or off pushing the caller's unmuted alerts to their browsers through Internet
+    /// Identity (BRE-211). Notifications arrive only on browsers where they also gave II consent.
+    /// Needs `Alerts.View`.
+    public shared ({ caller }) func setAlertPush(enabled : Bool) : async Result<(), { #Unauthorized }> {
+        if (not canReadAlerts(caller)) return #err(#Unauthorized);
+        AlertsAPI.setPush(alerts, caller, enabled);
+        #ok;
+    };
+
     /// Marks every alert up to number `upTo` read for the caller. Needs `Alerts.View`.
     public shared ({ caller }) func markAlertsSeen(upTo : Nat) : async Result<(), { #Unauthorized }> {
         if (not canReadAlerts(caller)) return #err(#Unauthorized);

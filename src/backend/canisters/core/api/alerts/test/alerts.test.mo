@@ -140,5 +140,93 @@ suite(
                 expect.nat(AlertsAPI.clip(long).size()).equal(AlertsAPI.MAX_ERROR_LENGTH + 1);
             },
         );
+
+        test(
+            "pushes only to staff with push on, the type unmuted and Alerts.View still held",
+            func() {
+                let state = AlertsAPI.empty();
+                let formerStaff = Principal.fromText("aaaaa-aa");
+                AlertsAPI.setPush(state, staff, true);
+                AlertsAPI.setPush(state, formerStaff, true);
+                AlertsAPI.setMuted(state, other, []);
+                let canReadAlerts = func(p : Principal) : Bool = p != formerStaff;
+                let recipients = AlertsAPI.pushRecipients(state, registered(state), canReadAlerts);
+                expect.bool(recipients == [staff]).isTrue();
+                AlertsAPI.setMuted(state, staff, [#userRegistered]);
+                expect.nat(AlertsAPI.pushRecipients(state, registered(state), canReadAlerts).size()).equal(0);
+                expect.nat(AlertsAPI.pushRecipients(state, shopCreated(state), canReadAlerts).size()).equal(1);
+                AlertsAPI.setPush(state, staff, false);
+                expect.nat(AlertsAPI.pushRecipients(state, shopCreated(state), canReadAlerts).size()).equal(0);
+            },
+        );
+
+        test(
+            "push settings keep muted types and read position",
+            func() {
+                let state = AlertsAPI.empty();
+                ignore registered(state);
+                AlertsAPI.setMuted(state, staff, [#shopCreated]);
+                AlertsAPI.markSeen(state, staff, 0);
+                AlertsAPI.setPush(state, staff, true);
+                let settings = AlertsAPI.getSettings(state, staff);
+                expect.bool(settings.push).isTrue();
+                expect.nat(settings.muted.size()).equal(1);
+                expect.bool(settings.lastSeen == ?0).isTrue();
+                expect.bool(AlertsAPI.getSettings(state, other).push).isFalse();
+            },
+        );
+
+        test(
+            "a queued push is still wanted only with push on, Alerts.View held and its type unmuted",
+            func() {
+                let state = AlertsAPI.empty();
+                let isShopCreated = func(t : AlertsAPI.AlertType) : Bool = t == #shopCreated;
+                expect.bool(AlertsAPI.pushWanted(state, staff, true, isShopCreated)).isFalse();
+                AlertsAPI.setPush(state, staff, true);
+                expect.bool(AlertsAPI.pushWanted(state, staff, true, isShopCreated)).isTrue();
+                expect.bool(AlertsAPI.pushWanted(state, staff, false, isShopCreated)).isFalse();
+                AlertsAPI.setMuted(state, staff, [#userRegistered]);
+                expect.bool(AlertsAPI.pushWanted(state, staff, true, isShopCreated)).isTrue();
+                AlertsAPI.setMuted(state, staff, [#shopCreated]);
+                expect.bool(AlertsAPI.pushWanted(state, staff, true, isShopCreated)).isFalse();
+            },
+        );
+
+        test(
+            "pushes each alert type at most once per cooldown",
+            func() {
+                let pushTimes = AlertsAPI.emptyPushTimes();
+                let start = 1_000_000_000_000;
+                expect.bool(AlertsAPI.takePushTurn(pushTimes, #shopRegistered, start)).isTrue();
+                expect.bool(AlertsAPI.takePushTurn(pushTimes, #shopRegistered, start + AlertsAPI.PUSH_COOLDOWN - 1)).isFalse();
+                expect.bool(AlertsAPI.takePushTurn(pushTimes, #userRegistered, start + 1)).isTrue();
+                expect.bool(AlertsAPI.takePushTurn(pushTimes, #shopRegistered, start + AlertsAPI.PUSH_COOLDOWN)).isTrue();
+            },
+        );
+
+        test(
+            "push text names no principal or error, and each type has its own key",
+            func() {
+                let error = "trapped at " # user.toText();
+                let kinds : [AlertsAPI.AlertKind] = [
+                    #userRegistered({ user }),
+                    #shopCreated({ shop; owner = user }),
+                    #shopRegistered({ shop; owner = user }),
+                    #shopCreationFailed({ quoteId = 7; owner = user; error }),
+                ];
+                for (kind in kinds.values()) {
+                    let message = AlertsAPI.pushMessage(kind);
+                    for (text in [message.title, message.body].values()) {
+                        expect.bool(text.contains(#text(user.toText()))).isFalse();
+                        expect.bool(text.contains(#text(shop.toText()))).isFalse();
+                        expect.bool(text.contains(#text("trapped"))).isFalse();
+                    };
+                };
+                let keys = AlertsAPI.allTypes.map(AlertsAPI.pushKey);
+                for (key in keys.values()) {
+                    expect.nat(keys.filter(func(k : Text) : Bool = k == key).size()).equal(1);
+                };
+            },
+        );
     },
 );

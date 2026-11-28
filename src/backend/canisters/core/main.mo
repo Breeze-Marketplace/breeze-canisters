@@ -45,6 +45,7 @@ import UpgradesAPI "./api/upgrades";
 import HandoverAPI "./api/handover";
 import ReleasesAPI "./api/releases";
 import AlertsAPI "./api/alerts";
+import NotificationState "./lib/notifications/State";
 import HistoryAPI "./api/history";
 import ShopEvents "./lib/ShopEvents";
 import Siblings "./lib/Siblings";
@@ -52,6 +53,7 @@ import Types "./types";
 
 import Users "./mixins/Users";
 import Alerts "./mixins/Alerts";
+import Notifications "./mixins/Notifications";
 import Admins "./mixins/Admins";
 import History "./mixins/History";
 import ShopCreation "./mixins/ShopCreation";
@@ -125,6 +127,41 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
 
     // Events staff are alerted to, and each staff member's alert settings (BRE-210).
     let platformAlerts : AlertsAPI.State;
+
+    // Browser notifications waiting for, or already taken by, Internet Identity (BRE-211).
+    let alertNotifications : NotificationState.State;
+
+    transient let alertPushTimes = AlertsAPI.emptyPushTimes();
+
+    /// Records a platform alert and pushes it to the staff who turned push on for its type
+    /// (BRE-211). One notification per staff member and alert type, linking to `/admin/alerts`,
+    /// and at most one push per type every `AlertsAPI.PUSH_COOLDOWN`.
+    func recordAlert<system>(kind : AlertsAPI.AlertKind) {
+        let alert = AlertsAPI.record(platformAlerts, kind);
+        let recipients = AlertsAPI.pushRecipients(platformAlerts, alert, func(staff : Principal) : Bool = AdminAPI.has(adminApi, staff, PlatformPermissions.alertsView));
+        if (recipients.size() == 0) return;
+        let alertType = AlertsAPI.typeOf(kind);
+        if (not AlertsAPI.takePushTurn(alertPushTimes, alertType, alert.at)) return;
+        let message = AlertsAPI.pushMessage(kind);
+        let url = switch (notifications.origin()) {
+            case (?origin) ?(origin # "/admin/alerts");
+            case null null;
+        };
+        for (staff in recipients.values()) {
+            notifications.send<system>(
+                staff,
+                {
+                    title = message.title;
+                    body = message.body;
+                    url;
+                    key = ?AlertsAPI.pushKey(alertType);
+                    urgency = ?(if (alertType == #shopCreationFailed) #high else #normal);
+                    expiresAt = ?(alert.at + AlertsAPI.PUSH_LIFETIME);
+                    funnel = ?"alerts";
+                },
+            );
+        };
+    };
 
     let orders : Map.Map<OrderAPI.OrderKey, OrderAPI.Order>;
 
@@ -423,7 +460,7 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         ShopAPI.putShopRegistryAndIndexes(shopApi, item, quote.normalizedName);
         ShopAPI.addToManagedShops(shopApi, owner, canisterId);
         ignore HistoryAPI.record(marketplaceHistory, owner, ?canisterId, #shopCreated({ owner; quoteId = quote.id }));
-        ignore AlertsAPI.record(platformAlerts, #shopCreated({ shop = canisterId; owner }));
+        recordAlert<system>(#shopCreated({ shop = canisterId; owner }));
         ShopCanistersAPI.recordInstall(shopCanistersState, canisterId, { version; sha256 = null });
         ShopCanistersAPI.linkVault(shopCanistersState, canisterId, mediaCanisterId);
         logger.info("Registered shop " # Principal.toText(canisterId) # " (" # WasmVersion.toText(version) # ") with vault " # Principal.toText(mediaCanisterId) # " for quote " # debug_show (quote.id));
@@ -466,7 +503,20 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         return #ok(canisterId);
     };
 
-    include Users(userRegistry, registrationBudget, maxUsers, func(user : Principal) = ignore AlertsAPI.record(platformAlerts, #userRegistered({ user })));
+    /// Whether `staff` still wants notification `id`: push on, `Alerts.View` still held, and not the
+    /// notification of a type they have since muted. Checked again before each send and pull.
+    func alertPushWanted(staff : Principal, id : Nat64) : Bool {
+        AlertsAPI.pushWanted(
+            platformAlerts,
+            staff,
+            AdminAPI.has(adminApi, staff, PlatformPermissions.alertsView),
+            func(alertType : AlertsAPI.AlertType) : Bool = notifications.idFor(staff, AlertsAPI.pushKey(alertType)) == id,
+        );
+    };
+    // After adminApi, which alertPushWanted reads: an include's arguments are evaluated at once.
+    include Notifications<system>(alertNotifications, alertPushWanted);
+
+    include Users(userRegistry, registrationBudget, maxUsers, func<system>(user : Principal) = recordAlert<system>(#userRegistered({ user })));
     include Alerts(adminApi, platformAlerts);
     include Admins(adminApi);
     include TeamApi(
@@ -477,8 +527,8 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         },
     );
     include History(adminApi, marketplaceHistory);
-    include ShopCreation(shopCreationApi, adminApi, shopCreationState, exchangeRates, userRegistry, createShopForQuote, marketplaceHistory, platformAlerts);
-    include Shops(shopApi, adminApi, shopCanistersState, handoverState, shopCallFeesState, userRegistry, marketplaceHistory, platformAlerts, coreId, productPages, func(shopId : Principal) = OrderAPI.forgetShop(orderApi, shopId));
+    include ShopCreation(shopCreationApi, adminApi, shopCreationState, exchangeRates, userRegistry, createShopForQuote, marketplaceHistory, recordAlert);
+    include Shops(shopApi, adminApi, shopCanistersState, handoverState, shopCallFeesState, userRegistry, marketplaceHistory, recordAlert, coreId, productPages, func(shopId : Principal) = OrderAPI.forgetShop(orderApi, shopId));
     include Orders(orderApi, adminApi, shopRegistry, shopCallFeesState, coreId, subscriptionChecks);
     include ShopCallFees(shopCallFeesState, marketplaceHistory);
     include Balances(adminApi, coreId, shopCreationState, emptyQuoteDeposits);

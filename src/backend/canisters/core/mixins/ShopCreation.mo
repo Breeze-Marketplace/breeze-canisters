@@ -26,7 +26,8 @@ mixin (
     userRegistry : Map.Map<Principal, Types.UserRegistryItem>,
     createShopForQuote : (ShopCreationAPI.Quote) -> async Result<Principal, Text>,
     history : HistoryAPI.State,
-    alerts : AlertsAPI.State,
+    // Records a platform alert and pushes it to staff who asked (BRE-211).
+    recordAlert : <system>(AlertsAPI.AlertKind) -> (),
 ) {
     func shopCreationPriceIn(currency : ShopCreationAPI.Currency, maxRateAge : Time.Time) : async* Result<Nat, Text> {
         let usdCents = shopCreationState.priceUsdCents;
@@ -171,7 +172,7 @@ mixin (
         let result = await ShopCreationAPI.claim(shopCreationApi, caller, quoteId, createShopForQuote);
         switch (result) {
             case (#err(#CreationFailed(error))) {
-                ignore AlertsAPI.record(alerts, #shopCreationFailed({ quoteId; owner = caller; error = AlertsAPI.clip(error) }));
+                recordAlert<system>(#shopCreationFailed({ quoteId; owner = caller; error = AlertsAPI.clip(error) }));
             };
             case _ {};
         };

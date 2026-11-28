@@ -1,7 +1,7 @@
 [dependencies]
 base = "0.16.0"
 map = "9.0.1"
-core = "2.5.0"
+core = "2.6.2"
 ic-certification = "1.1.0"
 StableHashMap = "https://github.com/canscale/StableHashMap#master@06d5ae9d8561ec0c3768dbfcced6ee90be923b70"
 sha2 = "0.1.0"

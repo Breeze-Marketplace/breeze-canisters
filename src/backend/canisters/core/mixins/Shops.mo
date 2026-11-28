@@ -27,7 +27,8 @@ mixin (
     callFees : ShopCallFeesAPI.State,
     userRegistry : Map.Map<Principal, Types.UserRegistryItem>,
     history : HistoryAPI.State,
-    alerts : AlertsAPI.State,
+    // Records a platform alert and pushes it to staff who asked (BRE-211).
+    recordAlert : <system>(AlertsAPI.AlertKind) -> (),
     coreId : Principal,
     productPages : ShopAPI.SyncShopProductsHooks,
     // Drops how far core read an unregistered shop's order log (BRE-203).
@@ -58,7 +59,7 @@ mixin (
         );
         if (res == #ok) {
             ignore HistoryAPI.record(history, caller, ?req.canisterId, #shopRegistered({ owner = caller }));
-            ignore AlertsAPI.record(alerts, #shopRegistered({ shop = req.canisterId; owner = caller }));
+            recordAlert<system>(#shopRegistered({ shop = req.canisterId; owner = caller }));
             ignore await ShopCanistersAPI.linkRegisteredShopVault(
                 shopCanistersState,
                 req.canisterId,

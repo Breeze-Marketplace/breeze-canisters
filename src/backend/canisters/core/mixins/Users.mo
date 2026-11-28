@@ -10,7 +10,7 @@ mixin (
     userRegistry : Map.Map<Principal, Types.UserRegistryItem>,
     registrationBudget : RateLimit.Global,
     maxUsers : Nat,
-    onUserRegistered : Principal -> (),
+    onUserRegistered : <system>(Principal) -> (),
 ) {
     /// Registers the caller as a user in the system. Required before creating or managing shops.
     /// A principal costs nothing to make, so new registrations come out of a budget shared by all
@@ -27,7 +27,7 @@ mixin (
             return #err(#RateLimited);
         };
         Map.set(userRegistry, Map.phash, caller, { registrationDate = now });
-        onUserRegistered(caller);
+        onUserRegistered<system>(caller);
         #ok;
     };
 };
