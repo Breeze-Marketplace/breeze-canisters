@@ -871,6 +871,93 @@ suite(
                 );
 
                 await test(
+                    "a background subscription check runs one at a time and tallies each shop",
+                    func() : async () {
+                        let api = OrderAPI.API(makeDependencies(Set.fromIter<Principal>([shopId].values(), Set.phash)));
+                        let shops = makeShops(api);
+                        let hooks : OrderAPI.SubscriptionCheckHooks = {
+                            orderLog = emptyOrderLog;
+                            getSubscriptions = func(_ : Principal) : async [ShopInterface.EventKind] {
+                                throw Error.reject("unreachable");
+                            };
+                            subscribe = shops.subscribe;
+                            syncProducts = func(_ : Principal) : async Result.Result<(), Text> {
+                                Runtime.trap("must not sync");
+                            };
+                        };
+
+                        let begun = OrderAPI.beginSubscriptionCheck(api, #requested, 2, 7);
+                        expect.bool(Result.isOk(begun)).isTrue();
+                        switch (OrderAPI.beginSubscriptionCheck(api, #scheduled, 2, 8)) {
+                            case (#err(running)) expect.int(running.startedAt).equal(7);
+                            case (#ok(_)) Runtime.trap("a second run began while one was under way");
+                        };
+
+                        await OrderAPI.runSubscriptionCheck(api, [shopId, otherShopId], hooks);
+
+                        expect.bool(Option.isNull(api.runningSubscriptionCheck)).isTrue();
+                        let ?last = api.lastSubscriptionCheck else Runtime.trap("no finished run");
+                        expect.bool(last.trigger == #requested).isTrue();
+                        expect.bool(Option.isSome(last.finishedAt)).isTrue();
+                        expect.nat(last.shops).equal(2);
+                        expect.nat(last.tally.checked).equal(2);
+                        expect.nat(last.tally.unknown).equal(1);
+                        expect.nat(last.tally.notRegistered).equal(1);
+                        expect.bool(Result.isOk(OrderAPI.beginSubscriptionCheck(api, #scheduled, 0, 9))).isTrue();
+                    },
+                );
+
+                await test(
+                    "tallySubscriptionCheck counts a failed product resync apart from a clean one",
+                    func() : async () {
+                        let tallied = [
+                            {
+                                shopId;
+                                check = #subscribed;
+                                orders = #caughtUp({
+                                    events = 3;
+                                    fetched = 1;
+                                    pending = 2;
+                                    complete = true;
+                                    restarted = false;
+                                });
+                            },
+                            {
+                                shopId;
+                                check = #resubscribed({
+                                    missing = [#OrderUpdated];
+                                    productSync = #ok;
+                                });
+                                orders = #inProgress;
+                            },
+                            {
+                                shopId;
+                                check = #resynced({ productSync = #err("down") });
+                                orders = #unknown("down");
+                            },
+                            {
+                                shopId;
+                                check = #resubscribeFailed({
+                                    missing = [#OrderUpdated];
+                                    error = "no role";
+                                });
+                                orders = #skipped("not subscribed");
+                            },
+                        ].foldLeft(OrderAPI.EMPTY_SUBSCRIPTION_CHECK_TALLY, OrderAPI.tallySubscriptionCheck);
+
+                        expect.nat(tallied.checked).equal(4);
+                        expect.nat(tallied.subscribed).equal(1);
+                        expect.nat(tallied.resubscribed).equal(1);
+                        expect.nat(tallied.resynced).equal(0);
+                        expect.nat(tallied.resyncFailed).equal(1);
+                        expect.nat(tallied.resubscribeFailed).equal(1);
+                        expect.nat(tallied.orderEvents).equal(3);
+                        expect.nat(tallied.ordersPending).equal(2);
+                        expect.nat(tallied.orderCatchUpsSkipped).equal(2);
+                    },
+                );
+
+                await test(
                     "orders from a subscribed but unregistered shop are ignored",
                     func() : async () {
                         let api = OrderAPI.API(makeDependencies(Set.new<Principal>()));

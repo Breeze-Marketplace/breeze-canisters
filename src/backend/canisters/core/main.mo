@@ -525,40 +525,13 @@ shared ({ caller = initializer }) persistent actor class Core() = self {
         };
     };
 
-    // Whether the daily subscription check is running, so a slow run and the next don't overlap.
-    transient var checkingShopSubscriptions = false;
-
-    /// Finds registered shops that dropped core's event subscription and repairs them (BRE-195).
+    /// Finds registered shops that dropped core's event subscription and repairs them (BRE-195),
+    /// unless a check staff started is still under way.
     func checkAllShopSubscriptions() : async () {
-        if (checkingShopSubscriptions) return;
-        checkingShopSubscriptions := true;
-        try {
-            let results = await OrderAPI.checkShopSubscriptions(orderApi, Iter.toArray(Map.keys(shopRegistry)), subscriptionChecks);
-            var resubscribed = 0;
-            var resynced = 0;
-            var unknown = 0;
-            var orderEvents = 0;
-            var ordersPending = 0;
-            var ordersSkipped = 0;
-            for (r in results.values()) {
-                switch (r.check) {
-                    case (#resubscribed(_)) resubscribed += 1;
-                    case (#resynced(_)) resynced += 1;
-                    case (#unknown(_)) unknown += 1;
-                    case _ {};
-                };
-                switch (r.orders) {
-                    case (#caughtUp({ events; pending })) {
-                        orderEvents += events;
-                        ordersPending += pending;
-                    };
-                    case (#skipped(_) or #unknown(_)) ordersSkipped += 1;
-                    case _ {};
-                };
-            };
-            logger.info("Checked the event subscriptions of " # debug_show results.size() # " shops: " # debug_show resubscribed # " resubscribed, " # debug_show resynced # " resynced, " # debug_show unknown # " couldn't say. Order catch-up: " # debug_show orderEvents # " events read, " # debug_show ordersPending # " orders waiting, " # debug_show ordersSkipped # " shops skipped");
-        } finally {
-            checkingShopSubscriptions := false;
+        let shopIds = Iter.toArray(Map.keys(shopRegistry));
+        switch (OrderAPI.beginSubscriptionCheck(orderApi, #scheduled, shopIds.size(), Time.now())) {
+            case (#err(_)) {};
+            case (#ok(_)) await OrderAPI.runSubscriptionCheck(orderApi, shopIds, subscriptionChecks);
         };
     };
 

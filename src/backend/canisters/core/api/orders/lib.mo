@@ -134,6 +134,11 @@ module {
         /// Shops whose notifications named a log event while their catch-up ran: the run reads the
         /// log once more before it ends, so events after its last page aren't left for the next run.
         public let notifiedDuringCatchUp = CoreSet.empty<Principal>();
+        /// The background subscription check under way (`beginSubscriptionCheck`), with its progress.
+        public var runningSubscriptionCheck : ?SubscriptionCheckRun = null;
+        /// The last background subscription check to finish. Lost on upgrade: the check core runs
+        /// five minutes after each upgrade sets it again.
+        public var lastSubscriptionCheck : ?SubscriptionCheckRun = null;
     };
 
     /// How far core has followed a shop's order log. `last` is the last event a catch-up read from
@@ -757,6 +762,141 @@ module {
             results.add({ shopId; check; orders });
         };
         List.toArray(results);
+    };
+
+    /// What started a background subscription check: core's daily timer (and the run five minutes
+    /// after each install or upgrade), or staff through `startShopSubscriptionCheck`.
+    public type SubscriptionCheckTrigger = { #scheduled; #requested };
+
+    /// How many shops a background subscription check has checked so far, by outcome. A shop whose
+    /// resubscribe or resync succeeded but whose product resync failed counts under `resyncFailed`.
+    public type SubscriptionCheckTally = {
+        checked : Nat;
+        subscribed : Nat;
+        resubscribed : Nat;
+        resynced : Nat;
+        resyncFailed : Nat;
+        resubscribeFailed : Nat;
+        unknown : Nat;
+        notRegistered : Nat;
+        /// Order catch-up totals (BRE-203): events read, orders still waiting to be fetched, and
+        /// shops whose catch-up was skipped or couldn't read the log.
+        orderEvents : Nat;
+        ordersPending : Nat;
+        orderCatchUpsSkipped : Nat;
+    };
+
+    public type SubscriptionCheckRun = {
+        trigger : SubscriptionCheckTrigger;
+        /// How many shops the run checks: every registered shop when it started, or the ones named.
+        shops : Nat;
+        startedAt : Time.Time;
+        /// Null while the run is under way.
+        finishedAt : ?Time.Time;
+        tally : SubscriptionCheckTally;
+    };
+
+    public let EMPTY_SUBSCRIPTION_CHECK_TALLY : SubscriptionCheckTally = {
+        checked = 0;
+        subscribed = 0;
+        resubscribed = 0;
+        resynced = 0;
+        resyncFailed = 0;
+        resubscribeFailed = 0;
+        unknown = 0;
+        notRegistered = 0;
+        orderEvents = 0;
+        ordersPending = 0;
+        orderCatchUpsSkipped = 0;
+    };
+
+    /// `tally` with one more shop's check counted.
+    public func tallySubscriptionCheck(tally : SubscriptionCheckTally, result : ShopSubscriptionCheck) : SubscriptionCheckTally {
+        let counted = { tally with checked = tally.checked + 1 };
+        let byCheck = switch (result.check) {
+            case (#subscribed) {
+                { counted with subscribed = tally.subscribed + 1 };
+            };
+            case (#resubscribed({ productSync = #ok })) {
+                { counted with resubscribed = tally.resubscribed + 1 };
+            };
+            case (#resynced({ productSync = #ok })) {
+                { counted with resynced = tally.resynced + 1 };
+            };
+            case (#resubscribed(_) or #resynced(_)) {
+                { counted with resyncFailed = tally.resyncFailed + 1 };
+            };
+            case (#resubscribeFailed(_)) {
+                { counted with resubscribeFailed = tally.resubscribeFailed + 1 };
+            };
+            case (#unknown(_)) { { counted with unknown = tally.unknown + 1 } };
+            case (#notRegistered) {
+                { counted with notRegistered = tally.notRegistered + 1 };
+            };
+        };
+        switch (result.orders) {
+            case (#caughtUp({ events; pending })) {
+                {
+                    byCheck with orderEvents = tally.orderEvents + events;
+                    ordersPending = tally.ordersPending + pending;
+                };
+            };
+            case (#skipped(_) or #unknown(_)) {
+                {
+                    byCheck with orderCatchUpsSkipped = tally.orderCatchUpsSkipped + 1
+                };
+            };
+            case (#inProgress or #notRegistered) byCheck;
+        };
+    };
+
+    /// Marks a background subscription check of `shops` shops as under way, unless one already is:
+    /// then returns that one as `#err`. Call `runSubscriptionCheck` (not awaited) right after `#ok`.
+    public func beginSubscriptionCheck(api : API, trigger : SubscriptionCheckTrigger, shops : Nat, now : Time.Time) : Result<SubscriptionCheckRun, SubscriptionCheckRun> {
+        switch (api.runningSubscriptionCheck) {
+            case (?running) #err(running);
+            case null {
+                let run : SubscriptionCheckRun = {
+                    trigger;
+                    shops;
+                    startedAt = now;
+                    finishedAt = null;
+                    tally = EMPTY_SUBSCRIPTION_CHECK_TALLY;
+                };
+                api.runningSubscriptionCheck := ?run;
+                #ok(run);
+            };
+        };
+    };
+
+    /// The run `beginSubscriptionCheck` began: `checkShopSubscriptions` one shop at a time,
+    /// counting each outcome into `runningSubscriptionCheck` so staff can follow it, then moving it
+    /// to `lastSubscriptionCheck`. Callers don't await it: with many shops it runs for hours.
+    public func runSubscriptionCheck(api : API, shopIds : [Principal], hooks : SubscriptionCheckHooks) : async () {
+        try {
+            for (shopId in shopIds.values()) {
+                let results = await checkShopSubscriptions(api, [shopId], hooks);
+                switch (api.runningSubscriptionCheck) {
+                    case (?run) {
+                        api.runningSubscriptionCheck := ?{
+                            run with tally = results.foldLeft(run.tally, tallySubscriptionCheck)
+                        };
+                    };
+                    case null {};
+                };
+            };
+        } finally {
+            switch (api.runningSubscriptionCheck) {
+                case (?run) {
+                    let finished = { run with finishedAt = ?Time.now() };
+                    api.lastSubscriptionCheck := ?finished;
+                    let { tally } = finished;
+                    api.logger.info("Checked the event subscriptions of " # debug_show tally.checked # " of " # debug_show run.shops # " shops: " # debug_show tally.resubscribed # " resubscribed, " # debug_show tally.resynced # " resynced, " # debug_show (tally.resyncFailed + tally.resubscribeFailed) # " failed, " # debug_show tally.unknown # " couldn't say. Order catch-up: " # debug_show tally.orderEvents # " events read, " # debug_show tally.ordersPending # " orders waiting, " # debug_show tally.orderCatchUpsSkipped # " shops skipped");
+                };
+                case null {};
+            };
+            api.runningSubscriptionCheck := null;
+        };
     };
 
     public func listUnsubscribedShops(api : API) : [Principal] {

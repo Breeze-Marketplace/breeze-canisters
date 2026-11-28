@@ -52,16 +52,48 @@ mixin (
 
     /// Asks `shopIds`, or every registered shop when null, which events core still gets, one shop at
     /// a time. Where core lost one, subscribes again and resyncs the shop's products (BRE-195). Then
-    /// catches up on the shop's orders from its order log (BRE-203). Core also runs this daily and
-    /// five minutes after each install or upgrade. Needs `Shops.Manage`: each shop costs core a call,
-    /// a resync a call per page of products, and a catch-up a call per page of events and per order
-    /// it reads.
+    /// catches up on the shop's orders from its order log (BRE-203). Replies only once every shop is
+    /// checked, so for more than a few shops use `startShopSubscriptionCheck`, which runs in the
+    /// background. Needs `Shops.Manage`: each shop costs core a call, a resync a call per page of
+    /// products, and a catch-up a call per page of events and per order it reads.
     public shared ({ caller }) func checkShopSubscriptions(shopIds : ?[Principal]) : async Result<[OrderAPI.ShopSubscriptionCheck], { #Unauthorized }> {
         if (not AdminAPI.has(adminApi, caller, PlatformPermissions.shopsManage)) {
             return #err(#Unauthorized);
         };
         let ids = shopIds ?? Iter.toArray(Map.keys(shopRegistry));
         #ok(await OrderAPI.checkShopSubscriptions(orderApi, ids, subscriptionChecks));
+    };
+
+    /// Starts the check `checkShopSubscriptions` does, of `shopIds` or every registered shop when
+    /// null, in the background, the same run core starts daily and five minutes after each install or
+    /// upgrade (BRE-222). Returns at once; follow it with `getShopSubscriptionCheck`. Only one run at
+    /// a time: while one is under way, returns it as `#AlreadyRunning`. Needs `Shops.Manage`, for the
+    /// calls each shop costs core.
+    public shared ({ caller }) func startShopSubscriptionCheck(shopIds : ?[Principal]) : async Result<OrderAPI.SubscriptionCheckRun, { #Unauthorized; #AlreadyRunning : OrderAPI.SubscriptionCheckRun }> {
+        if (not AdminAPI.has(adminApi, caller, PlatformPermissions.shopsManage)) {
+            return #err(#Unauthorized);
+        };
+        let ids = shopIds ?? Iter.toArray(Map.keys(shopRegistry));
+        switch (OrderAPI.beginSubscriptionCheck(orderApi, #requested, ids.size(), Time.now())) {
+            case (#err(running)) #err(#AlreadyRunning(running));
+            case (#ok(run)) {
+                // Not awaited: with many shops the run outlasts any reply.
+                ignore OrderAPI.runSubscriptionCheck(orderApi, ids, subscriptionChecks);
+                #ok(run);
+            };
+        };
+    };
+
+    /// The background subscription check under way, with how many shops it has checked by outcome,
+    /// and the last one to finish since core's last upgrade (BRE-222). Needs `Shops.View`.
+    public query ({ caller }) func getShopSubscriptionCheck() : async Result<{ running : ?OrderAPI.SubscriptionCheckRun; last : ?OrderAPI.SubscriptionCheckRun }, { #Unauthorized }> {
+        if (not AdminAPI.has(adminApi, caller, PlatformPermissions.shopsView)) {
+            return #err(#Unauthorized);
+        };
+        #ok({
+            running = orderApi.runningSubscriptionCheck;
+            last = orderApi.lastSubscriptionCheck;
+        });
     };
 
     /// Registered shops whose events core may have missed: the last event subscription failed, or

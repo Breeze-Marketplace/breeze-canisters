@@ -89,6 +89,33 @@ type SyncShopProductsError =
    NotRegistered;
    Unauthorized;
  };
+type SubscriptionCheckTrigger = 
+ variant {
+   requested;
+   scheduled;
+ };
+type SubscriptionCheckTally = 
+ record {
+   checked: nat;
+   notRegistered: nat;
+   orderCatchUpsSkipped: nat;
+   orderEvents: nat;
+   ordersPending: nat;
+   resubscribeFailed: nat;
+   resubscribed: nat;
+   resyncFailed: nat;
+   resynced: nat;
+   subscribed: nat;
+   unknown: nat;
+ };
+type SubscriptionCheckRun = 
+ record {
+   finishedAt: opt Time;
+   shops: nat;
+   startedAt: Time;
+   tally: SubscriptionCheckTally;
+   trigger: SubscriptionCheckTrigger;
+ };
 type SubscriptionCheck = 
  variant {
    notRegistered;
@@ -231,38 +258,51 @@ type RoleView =
 type RoleId = nat;
 type Result_9 = 
  variant {
-   err: variant {Unauthorized;};
-   ok;
- };
-type Result_8 = 
- variant {
    err: SetShopSlugError;
    ok: text;
  };
-type Result_7 = 
+type Result_8 = 
  variant {
    err: StartError;
    ok;
  };
-type Result_6 = 
+type Result_7 = 
  variant {
    err: HandoverError;
    ok;
  };
-type Result_52 = 
+type Result_6 = 
+ variant {
+   err: variant {
+          AlreadyRunning: SubscriptionCheckRun;
+          Unauthorized;
+        };
+   ok: SubscriptionCheckRun;
+ };
+type Result_54 = 
  variant {
    err: ApproveError;
    ok: Rollout;
  };
-type Result_51 = 
+type Result_53 = 
  variant {
    err: CheckShopSlugError;
    ok;
  };
-type Result_50 = 
+type Result_52 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec ShopSubscriptionCheck;
+ };
+type Result_51 = 
+ variant {
+   err: HandoverError;
+   ok: SelfManaged;
+ };
+type Result_50 = 
+ variant {
+   err: Error;
+   ok: RoleId;
  };
 type Result_5 = 
  variant {
@@ -271,20 +311,10 @@ type Result_5 =
  };
 type Result_49 = 
  variant {
-   err: HandoverError;
-   ok: SelfManaged;
- };
-type Result_48 = 
- variant {
-   err: Error;
-   ok: RoleId;
- };
-type Result_47 = 
- variant {
    err: CreateShopQuoteError;
    ok: QuoteView;
  };
-type Result_46 = 
+type Result_48 = 
  variant {
    err:
     variant {
@@ -296,27 +326,27 @@ type Result_46 =
     };
    ok;
  };
-type Result_45 = 
+type Result_47 = 
  variant {
    err: variant {Unauthorized;};
    ok: AlertSettings;
  };
-type Result_44 = 
+type Result_46 = 
  variant {
    err: variant {Unauthorized;};
    ok: AlertSummary;
  };
-type Result_43 = 
+type Result_45 = 
  variant {
    err: text;
    ok: CyclesStatus;
  };
-type Result_42 = 
+type Result_44 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec CanisterCycles;
  };
-type Result_41 = 
+type Result_43 = 
  variant {
    err: variant {Unauthorized;};
    ok: record {
@@ -324,10 +354,20 @@ type Result_41 =
          vault: opt Version;
        };
  };
-type Result_40 = 
+type Result_42 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec Log;
+ };
+type Result_41 = 
+ variant {
+   err: variant {Unauthorized;};
+   ok: Balances;
+ };
+type Result_40 = 
+ variant {
+   err: variant {NotFound;};
+   ok: ControlStatus;
  };
 type Result_4 = 
  variant {
@@ -336,35 +376,34 @@ type Result_4 =
  };
 type Result_39 = 
  variant {
-   err: variant {Unauthorized;};
-   ok: Balances;
+   err: text;
+   ok: ShopCreationPrice;
  };
 type Result_38 = 
  variant {
    err: variant {NotFound;};
-   ok: ControlStatus;
- };
-type Result_37 = 
- variant {
-   err: text;
-   ok: ShopCreationPrice;
- };
-type Result_36 = 
- variant {
-   err: variant {NotFound;};
    ok: vec CanisterRunway;
  };
-type Result_34 = 
+type Result_36 = 
  variant {
    err: variant {NotPublished;};
    ok: blob;
  };
-type Result_33 = 
+type Result_35 = 
+ variant {
+   err: variant {Unauthorized;};
+   ok:
+    record {
+      last: opt SubscriptionCheckRun;
+      running: opt SubscriptionCheckRun;
+    };
+ };
+type Result_34 = 
  variant {
    err: variant {Unauthorized;};
    ok: nat;
  };
-type Result_32 = 
+type Result_33 = 
  variant {
    err: variant {
           NotFound;
@@ -372,10 +411,15 @@ type Result_32 =
         };
    ok: opt principal;
  };
-type Result_31 = 
+type Result_32 = 
  variant {
    err: variant {Unauthorized;};
    ok: Page_8;
+ };
+type Result_30 = 
+ variant {
+   err: variant {Unauthorized;};
+   ok: Page_6;
  };
 type Result_3 = 
  variant {
@@ -384,55 +428,45 @@ type Result_3 =
  };
 type Result_29 = 
  variant {
-   err: variant {Unauthorized;};
-   ok: Page_6;
+   err: Error;
+   ok: Page_5;
  };
 type Result_28 = 
  variant {
    err: Error;
-   ok: Page_5;
- };
-type Result_27 = 
- variant {
-   err: Error;
    ok: Page_3;
  };
-type Result_26 = 
+type Result_27 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec Rollout;
  };
-type Result_25 = 
+type Result_26 = 
  variant {
    err: variant {Unauthorized;};
    ok: Page_1;
  };
-type Result_24 = 
+type Result_25 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec QuoteView;
  };
-type Result_23 = 
+type Result_24 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec principal;
  };
-type Result_22 = 
+type Result_23 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec WasmInfo;
  };
-type Result_20 = 
+type Result_21 = 
  variant {
    err: PublishError;
    ok: Release;
  };
-type Result_2 = 
- variant {
-   err: Error;
-   ok;
- };
-type Result_19 = 
+type Result_20 = 
  variant {
    err: variant {
           NotFound;
@@ -441,12 +475,17 @@ type Result_19 =
         };
    ok: vec CanisterRunway;
  };
-type Result_18 = 
+type Result_2 = 
+ variant {
+   err: Error;
+   ok;
+ };
+type Result_19 = 
  variant {
    err: RefundError;
    ok: nat;
  };
-type Result_17 = 
+type Result_18 = 
  variant {
    err:
     variant {
@@ -458,17 +497,17 @@ type Result_17 =
     };
    ok: QuoteStatus;
  };
-type Result_16 = 
+type Result_17 = 
  variant {
    err: RestoreError;
    ok;
  };
-type Result_15 = 
+type Result_16 = 
  variant {
    err: variant {Unauthorized;};
    ok: vec ShopSubscriptionResult;
  };
-type Result_14 = 
+type Result_15 = 
  variant {
    err: variant {
           NotFound;
@@ -477,14 +516,19 @@ type Result_14 =
         };
    ok;
  };
-type Result_13 = 
+type Result_14 = 
  variant {
    err: InitialVersionError;
    ok;
  };
-type Result_11 = 
+type Result_12 = 
  variant {
    err: AddressError;
+   ok;
+ };
+type Result_10 = 
+ variant {
+   err: variant {Unauthorized;};
    ok;
  };
 type Result_1 = 
@@ -1075,53 +1119,53 @@ type Core =
    /// Lets every shop or vault upgrade to `version`, once its canary runs it, and makes it the
    /// version new shops or vaults get when it's newer than the current one. Check the canary works
    /// before approving. A yanked version is refused. Needs `Upgrades.Approve`.
-   approveRollout: (name: WasmName, version: Version) -> (Result_52);
+   approveRollout: (name: WasmName, version: Version) -> (Result_54);
    /// Needs `Team.AssignRoles` and every permission in the role.
    assignRole: ("principal": principal, id: RoleId) -> (Result_2);
    /// Cancels a pending handover: core is again the only controller of the shop and its vault.
    /// The shop owner or the pending controller.
-   cancelShopHandover: (shopId: principal) -> (Result_6);
+   cancelShopHandover: (shopId: principal) -> (Result_7);
    /// Whether `slug` is valid and free for a new shop of the caller's.
-   checkShopSlug: (slug: text) -> (Result_51) query;
+   checkShopSlug: (slug: text) -> (Result_53) query;
    /// Asks `shopIds`, or every registered shop when null, which events core still gets, one shop at
    /// a time. Where core lost one, subscribes again and resyncs the shop's products (BRE-195). Then
-   /// catches up on the shop's orders from its order log (BRE-203). Core also runs this daily and
-   /// five minutes after each install or upgrade. Needs `Shops.Manage`: each shop costs core a call,
-   /// a resync a call per page of products, and a catch-up a call per page of events and per order
-   /// it reads.
-   checkShopSubscriptions: (shopIds: opt vec principal) -> (Result_50);
+   /// catches up on the shop's orders from its order log (BRE-203). Replies only once every shop is
+   /// checked, so for more than a few shops use `startShopSubscriptionCheck`, which runs in the
+   /// background. Needs `Shops.Manage`: each shop costs core a call, a resync a call per page of
+   /// products, and a catch-up a call per page of events and per order it reads.
+   checkShopSubscriptions: (shopIds: opt vec principal) -> (Result_52);
    /// Finishes a handover: called by the new controller itself, which proves the principal is in
    /// the merchant's hands. Core removes itself as a controller of the vault and the shop, and
    /// stops upgrading them. Retry after `#UpdateFailed`.
-   confirmShopHandover: (shopId: principal) -> (Result_49);
+   confirmShopHandover: (shopId: principal) -> (Result_51);
    /// Needs `Team.EditRoles` and every permission in the role.
-   createRole: (name: text, permissions: vec PermissionId) -> (Result_48);
+   createRole: (name: text, permissions: vec PermissionId) -> (Result_50);
    /// Creates the Shop canister for a paid quote (see `createShopQuote`) and registers it in the
    /// marketplace. If creation fails the quote stays paid: call again to retry, or refund it.
    createShop: (quoteId: QuoteId) -> (CreateShopResponse);
    /// Quotes a hosted shop: locks the price in `currency` for 30 minutes, reserves the shop name and
    /// URL slug (`req.slug`, or one made from the name), and returns the account to pay. Pay the quoted amount there, then call `createShop` with the quote ID.
-   createShopQuote: (req: CreateShopQuoteRequest) -> (Result_47);
+   createShopQuote: (req: CreateShopQuoteRequest) -> (Result_49);
    /// Registers the caller as a user in the system. Required before creating or managing shops.
    /// A principal costs nothing to make, so new registrations come out of a budget shared by all
    /// callers and stop at a hard cap (`#RateLimited`, BRE-120); an existing user is never refused.
-   createUser: () -> (Result_46);
+   createUser: () -> (Result_48);
    /// Deletes the caller's saved address `id`. Refuses anonymous callers.
-   deleteMyAddress: (id: AddressId) -> (Result_11);
+   deleteMyAddress: (id: AddressId) -> (Result_12);
    /// Deletes the role and takes it from its members. Needs `Team.EditRoles` and every permission in the role.
    deleteRole: (id: RoleId) -> (Result_2);
    /// The caller's alert settings. Needs `Alerts.View`.
-   getAlertSettings: () -> (Result_45) query;
+   getAlertSettings: () -> (Result_47) query;
    /// How many unmuted alerts the caller hasn't marked read (at most 100), and the newest alert's
    /// number to mark read with `markAlertsSeen`. Needs `Alerts.View`.
-   getAlertSummary: () -> (Result_44) query;
+   getAlertSummary: () -> (Result_46) query;
    /// Cycle balances and freezing thresholds of core, product_index, canister_factory and the
    /// frontend, read with canister_status (scripts/setup.sh makes core a status viewer of each).
    /// Shops and vaults aren't listed. A canister core can't read shows an error row. Needs `Cycles.View`.
-   getCanisterCycles: () -> (Result_42);
+   getCanisterCycles: () -> (Result_44);
    /// The shop and vault versions new shops get: each is the newest approved rollout, unless it was
    /// yanked (BRE-85). Null: none, so shop creation fails until a version is approved. Needs `Upgrades.View`.
-   getCurrentWasmVersions: () -> (Result_41) query;
+   getCurrentWasmVersions: () -> (Result_43) query;
    /// Core's cycle balance. A query, so it costs core nothing; the balance is public on the IC anyway.
    getCyclesBalance: () -> (nat) query;
    /// Returns the cached XRC quote for `baseAsset`/`quoteAsset` when fresh. Otherwise spends cycles on a new XRC
@@ -1132,13 +1176,13 @@ type Core =
    /// This canister's recent log entries, newest first (at most `limit`, capped at
    /// `Logger.MAX_LOGS`). Whether they survive an upgrade depends on the canister: shop keeps its
    /// log in stable state, core's is transient and an upgrade clears it. Authorized callers only.
-   getLogs: (limit: opt nat) -> (Result_40) query;
+   getLogs: (limit: opt nat) -> (Result_42) query;
    /// Core's ICP (e8s) and ckUSDC (6 decimals) balances, totalled over its subaccounts: the main
    /// account and each shop creation quote's deposit account, except the deposits of settled
    /// quotes (claimed, refunded, or unpaid past their grace period) that an earlier call found
    /// empty (BRE-101). Core keeps no accounts for users (BRE-83). `accounts` lists the main
    /// account and every other account that holds funds. Needs `Balances.View`.
-   getMarketplaceBalances: () -> (Result_39);
+   getMarketplaceBalances: () -> (Result_41);
    /// Who this marketplace is, for a shop that recognizes it (`recognizeMarketplace` on the shop):
    /// core's ID, the frontend canister's ID (null when it isn't deployed) and the marketplace's
    /// name. Public: none of it is private.
@@ -1159,30 +1203,33 @@ type Core =
                            }) query;
    /// Who controls a registered shop and its vault: core, core and a pending new controller, or
    /// the merchant's own principal. Public: a canister's controllers are public on the IC anyway.
-   getShopControl: (shopId: principal) -> (Result_38) query;
+   getShopControl: (shopId: principal) -> (Result_40) query;
    /// The current price of a hosted shop, in USD and in each accepted currency. Open to any caller
    /// with no limit of its own: the ICP price reads the fixed USD/ICP pair through the exchange-rate
    /// cache (BRE-63), so core makes at most one XRC call per 30 min, or one a minute while XRC
    /// fails, however often this is called (BRE-120).
-   getShopCreationPrice: () -> (Result_37);
+   getShopCreationPrice: () -> (Result_39);
    /// The caller's quote with ID `quoteId`, including its status and where to pay it.
    getShopCreationQuote: (quoteId: QuoteId) -> (opt QuoteView) query;
    /// The shop's and vault's balances and time left as of core's last reading (at most a day
    /// old). Anyone may call it: a shop's cycle balance is already public through its own
    /// `getCyclesBalance`.
-   getShopCycles: (shopId: principal) -> (Result_36) query;
+   getShopCycles: (shopId: principal) -> (Result_38) query;
    /// Events about shop `shopId` (and its vault) after sequence number `after`, oldest first, a page
    /// at a time. Needs `History.View`.
    getShopHistory: (shopId: principal, after: opt nat, limit: opt nat) ->
-    (Result_29) query;
+    (Result_30) query;
    /// The wasm of a published release, from the canister factory. Public; only published
    /// versions. A composite query, so the answer isn't certified: check its SHA-256 against
    /// `listShopReleases`.
    getShopRelease: (name: WasmName, version: Version) ->
-    (Result_34) composite_query;
+    (Result_36) composite_query;
    /// The current slug of each registered shop in `ids` (at most 200), for building shop links from
    /// canister IDs (products, orders). Unregistered shops are left out.
    getShopSlugs: (ids: vec principal) -> (vec ShopSlug) query;
+   /// The background subscription check under way, with how many shops it has checked by outcome,
+   /// and the last one to finish since core's last upgrade (BRE-222). Needs `Shops.View`.
+   getShopSubscriptionCheck: () -> (Result_35) query;
    /// Orders indexed for the authenticated caller across shops, newest first, a page at a time (see
    /// `lib/Pagination`: pass `next` back as `after`).
    getUserOrders: (after: opt UserOrderCursor, limit: opt nat) ->
@@ -1191,10 +1238,10 @@ type Core =
    /// time in canister ID order.
    getUserShops: (after: opt principal, limit: opt nat) -> (Page_9) query;
    /// Core's own main-account ICP balance. Needs `Balances.View`.
-   getWalletBalance: () -> (Result_33);
+   getWalletBalance: () -> (Result_34);
    /// Lets core manage a self-managed shop again, once the merchant has added core back as a
    /// controller of the shop and its vault. The shop owner or the self-managed controller.
-   handBackShop: (shopId: principal) -> (Result_6);
+   handBackShop: (shopId: principal) -> (Result_7);
    /// Whether `principal` holds platform `permission` (`PlatformPermissions`). product_index,
    /// trust_safety and cycles_dispenser call this to authorize moderators, policy editors and cycles
    /// viewers (BRE-27, BRE-48, BRE-152, BRE-177); any other caller gets `false`.
@@ -1203,30 +1250,30 @@ type Core =
    /// Asks a registered shop for its vault and records it, for shops whose vault core didn't record
    /// (created before it did, or added with `registerShop`). Returns the vault, or null if the shop
    /// has none. Needs `Shops.Manage`.
-   linkShopVault: (shopId: principal) -> (Result_32);
+   linkShopVault: (shopId: principal) -> (Result_33);
    /// The alerts the caller hasn't muted, newest first, a page at a time: pass a page's `next` as
    /// `after` for older ones. A page can be short, or empty with a `next`, where muted alerts were
    /// skipped. Needs `Alerts.View`.
-   listAlerts: (after: opt nat, limit: opt nat) -> (Result_31) query;
+   listAlerts: (after: opt nat, limit: opt nat) -> (Result_32) query;
    /// Shops shown as artist pages, for the marketplace's Music page (BRE-201), a page at a time in
    /// canister ID order: pass `next` back as `after`. Shops trust_safety hid are left out, so a page
    /// can be short, or empty with a `next`. Empty until core has first copied the hidden shops from
    /// product_index, two minutes after the upgrade that added this (BRE-201).
    listArtistShops: (after: opt principal, limit: opt nat) -> (Page_7) query;
    /// The registered shops whose shop or vault may be a new version's canary. Needs `Upgrades.View`.
-   listCanaryShops: () -> (Result_23) query;
+   listCanaryShops: () -> (Result_24) query;
    /// Every event after sequence number `after`, oldest first, a page at a time. Needs `History.View`.
-   listHistory: (after: opt nat, limit: opt nat) -> (Result_29) query;
+   listHistory: (after: opt nat, limit: opt nat) -> (Result_30) query;
    /// Members (principals with at least one role) in principal order. Needs `Team.View`.
-   listMembers: (after: opt principal, limit: opt nat) -> (Result_28) query;
+   listMembers: (after: opt principal, limit: opt nat) -> (Result_29) query;
    /// The caller's saved addresses after id `after`, oldest first, a page at a time. Anonymous callers
    /// get an empty page.
    listMyAddresses: (after: opt AddressId, limit: opt nat) -> (Page_4) query;
    /// Roles in ID order. Needs `Team.View`.
-   listRoles: (after: opt RoleId, limit: opt nat) -> (Result_27) query;
+   listRoles: (after: opt RoleId, limit: opt nat) -> (Result_28) query;
    /// Every wasm version core has upgraded a canister to, with its canary and whether it's approved.
    /// Needs `Upgrades.View`.
-   listRollouts: () -> (Result_26) query;
+   listRollouts: () -> (Result_27) query;
    /// The caller's shop creation quotes, newest first, a page at a time.
    listShopCreationQuotes: (after: opt QuoteId, limit: opt nat) ->
     (Page_2) query;
@@ -1235,7 +1282,7 @@ type Core =
    /// before versions were recorded, shops registered with `registerShop`, and self-managed
    /// shops). A page at a time, by name. Needs `Shops.View`.
    listShopRegistry: (after: opt RegistryCursor, limit: opt nat) ->
-    (Result_25) query;
+    (Result_26) query;
    /// Every published release, newest first: version, SHA-256, size and notes. Public. Call it
    /// as an update (the `icp` default) for a certified answer to check a download against.
    listShopReleases: () -> (vec Release) query;
@@ -1244,53 +1291,53 @@ type Core =
    listShops: (after: opt principal, limit: opt nat) -> (Page) query;
    /// Quotes left `#Creating` or `#Refunding` by a claim or refund that no longer runs (BRE-68).
    /// Release each with `releaseStuckShopCreationQuote`. Needs `ShopCreation.Manage`.
-   listStuckShopCreationQuotes: () -> (Result_24) query;
+   listStuckShopCreationQuotes: () -> (Result_25) query;
    /// Registered shops whose events core may have missed: the last event subscription failed, or
    /// `checkShopSubscriptions` found the shop had dropped core and couldn't resubscribe or resync its
    /// products (the next check retries the resync). Their products and orders may be missing from the
    /// marketplace. Retry them with `resubscribeShops` or `checkShopSubscriptions`. Needs `Shops.View`.
-   listUnsubscribedShops: () -> (Result_23) query;
+   listUnsubscribedShops: () -> (Result_24) query;
    /// The versions of a wasm stored in the canister factory, oldest first (version, SHA-256, size,
    /// note, whether it's yanked; not the bytes), to pick one for `upgradeShop` / `upgradeVault`.
    /// Needs `Upgrades.View`.
-   listWasms: (name: WasmName) -> (Result_22);
+   listWasms: (name: WasmName) -> (Result_23);
    /// Marks every alert up to number `upTo` read for the caller. Needs `Alerts.View`.
-   markAlertsSeen: (upTo: nat) -> (Result_9);
+   markAlertsSeen: (upTo: nat) -> (Result_10);
    /// Publishes a shop or vault wasm version stored in the canister factory, with release notes
    /// (at most `MAX_NOTES` characters), so self-managed merchants can install it. Core records the
    /// SHA-256 the factory computed on upload. Publish a version once its rollout is approved; a
    /// yanked version is refused. Needs `Upgrades.Approve`.
    publishRelease: (name: WasmName, version: Version, notes: text) ->
-    (Result_20);
+    (Result_21);
    /// Reads the shop's and vault's balances again (after a top-up, say) and returns them as
    /// `getShopCycles` does. Registered users only, and a canister read in the last 5 minutes isn't
    /// read again. Each user may also trigger at most 20 reads an hour (a shop and its
    /// vault are two), else `#RateLimited`, so no one can sweep every shop. No owner
    /// check: the result is public anyway (see `getShopCycles`).
-   refreshShopCycles: (shopId: principal) -> (Result_19);
+   refreshShopCycles: (shopId: principal) -> (Result_20);
    /// Refunds an unclaimed quote's deposit (less the ledger fee) and closes the quote. Sends it to
    /// `to`, or to the caller's own account (`owner = caller`, no subaccount) when `to` is null:
    /// core never keeps a refund on the caller's behalf (BRE-83).
    refundShopCreationQuote: (quoteId: QuoteId, to: opt Account) ->
-    (Result_18);
+    (Result_19);
    /// Registers an existing Shop canister in the marketplace. Used when a user creates a shop via other means (e.g. CLI) and wants to list it in the marketplace, or to re-register after unregistering. The caller must be a registered user and a controller of the canister, which core reads through `canister_status`: core must be a controller or status viewer of it (`icp canister settings update <shop> --add-status-viewer <core>`), and the caller's Breeze sign-in principal must be one of the controllers. The shop's vault is recorded too when the caller controls it and core can read its controllers; otherwise an admin links it with `linkShopVault`.
    registerShop: (req: RegisterShopRequest) -> (RegisterShopResponse);
    /// Unlocks a stuck quote so its owner can claim or refund it again. Returns its new status:
    /// `#Created` if its shop is registered, otherwise `#Paid` if its deposit covers the price, or
    /// `#Pending`. Refuses a quote whose claim or refund is still running. Needs `ShopCreation.Manage`.
-   releaseStuckShopCreationQuote: (quoteId: QuoteId) -> (Result_17);
+   releaseStuckShopCreationQuote: (quoteId: QuoteId) -> (Result_18);
    /// The registered shop that has or had `slug` (any case), with its current slug (BRE-71). An old
    /// slug resolves too: send the visitor to `canonicalSlug`. Null for an unknown slug.
    resolveShopSlug: (slug: text) -> (opt ResolvedShopSlug) query;
    /// Loads core's snapshot of a shop or vault, taken just before its last upgrade: its wasm and
    /// state go back to how they were then, and anything recorded since is lost. For an upgrade
    /// that broke the canister. Needs `Upgrades.Run`.
-   restoreSnapshot: (canisterId: principal) -> (Result_16);
+   restoreSnapshot: (canisterId: principal) -> (Result_17);
    /// Subscribes core to the events (orders included) of `shopIds`, or of every registered shop
    /// when null, then catches up on each one's orders from its order log (BRE-203). Backfills shops
    /// created before core subscribed hosted shops to orders, and retries those in
    /// `listUnsubscribedShops`. Idempotent. Needs `Shops.Manage`: each shop costs core calls.
-   resubscribeShops: (shopIds: opt vec principal) -> (Result_15);
+   resubscribeShops: (shopIds: opt vec principal) -> (Result_16);
    /// Saves a shipping address with a nickname ("Home") for the caller, up to `MAX_ADDRESSES` (10). The
    /// first one saved, or one saved with `makeDefault`, becomes the default. The caller must be a
    /// registered user (`createUser`), never anonymous.
@@ -1299,39 +1346,45 @@ type Core =
    /// Allows (`eligible = true`) or stops a registered shop's shop and vault being the canary of a
    /// new version (BRE-147). Mark test shops, not merchants' live ones. Rollouts that already have a
    /// canary keep it. Needs `Upgrades.Run`.
-   setCanaryEligible: (shopId: principal, eligible: bool) -> (Result_14);
+   setCanaryEligible: (shopId: principal, eligible: bool) -> (Result_15);
    /// Makes a wasm version the one new shops or vaults get while none is, with no canary: for a
    /// fresh network (`scripts/setup.sh`) or after every approved version was yanked. Once a
    /// version is current, only `approveRollout` changes it. Needs `Upgrades.Approve`.
-   setInitialWasmVersion: (name: WasmName, version: Version) -> (Result_13);
+   setInitialWasmVersion: (name: WasmName, version: Version) -> (Result_14);
    /// Sets which alert types the caller doesn't want to see; every other type shows. Needs
    /// `Alerts.View`.
-   setMutedAlertTypes: (muted: vec AlertType) -> (Result_9);
+   setMutedAlertTypes: (muted: vec AlertType) -> (Result_10);
    /// Makes the caller's saved address `id` the one checkout fills in, or clears the default when
    /// `id` is null. Refuses anonymous callers.
-   setMyDefaultAddress: (id: opt AddressId) -> (Result_11);
+   setMyDefaultAddress: (id: opt AddressId) -> (Result_12);
    /// Turns the fees on or off. Controllers only. Turn them on once the shop version that attaches
    /// cycles is published, every hosted shop runs it and self-managed merchants have had time to install it:
    /// core refuses events from older shops, so their products and orders stop syncing.
-   setShopCallFeesEnforced: (enforced: bool) -> (Result_9);
+   setShopCallFeesEnforced: (enforced: bool) -> (Result_10);
    /// Sets the hosted shop price in US cents. 0 makes shop creation free. Controllers only.
-   setShopCreationPrice: (usdCents: nat) -> (Result_9);
+   setShopCreationPrice: (usdCents: nat) -> (Result_10);
    /// Changes a shop's URL slug. Only the shop's owner (as core's registry records it). Its old slug
    /// keeps leading to it, and no other shop can get it; a shop holds at most 10 slugs.
-   setShopSlug: (shopId: principal, slug: text) -> (Result_8);
+   setShopSlug: (shopId: principal, slug: text) -> (Result_9);
    /// Hides a shop from, or shows it again in, core's public listings of artists. Only trust_safety
    /// calls it, with each moderator's decision it also sends product_index.
    setShopVisibility: (shopId: principal, visibility: ShopVisibility) ->
     (Result_4);
    /// Starts a shop or vault that an upgrade or restore left stopped (it returned `#StartFailed`).
    /// Needs `Upgrades.Run`.
-   startCanister: (canisterId: principal) -> (Result_7);
+   startCanister: (canisterId: principal) -> (Result_8);
    /// Starts handing the shop and its vault over to `controller`, a principal the merchant
    /// controls (an `icp identity` or a wallet; not their Breeze sign-in). Core adds it as a
    /// controller of both, next to core, and nothing more happens until `controller` itself calls
    /// `confirmShopHandover`. Shop owner only.
    startShopHandover: (shopId: principal, controller: principal) ->
-    (Result_6);
+    (Result_7);
+   /// Starts the check `checkShopSubscriptions` does, of `shopIds` or every registered shop when
+   /// null, in the background, the same run core starts daily and five minutes after each install or
+   /// upgrade (BRE-222). Returns at once; follow it with `getShopSubscriptionCheck`. Only one run at
+   /// a time: while one is under way, returns it as `#AlreadyRunning`. Needs `Shops.Manage`, for the
+   /// calls each shop costs core.
+   startShopSubscriptionCheck: (shopIds: opt vec principal) -> (Result_6);
    /// A free slug for a shop called `name`, for the create-shop form to suggest (BRE-71). Not
    /// reserved: `createShopQuote` reserves it.
    suggestShopSlug: (name: text) -> (text) query;
@@ -1410,7 +1463,7 @@ type CanisterCycles =
  record {
    canisterId: principal;
    kind: CanisterKind;
-   status: Result_43;
+   status: Result_45;
  };
 type Balances = 
  record {
